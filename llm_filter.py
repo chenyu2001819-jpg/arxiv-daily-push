@@ -103,12 +103,16 @@ class LLMFilter:
         result = response.json()
         
         # 适配不同 API 的返回格式
-        if 'choices' in result and len(result['choices']) > 0:
+        if result.get('choices') and len(result['choices']) > 0:
             choice = result['choices'][0]
-            if 'message' in choice:
+            if choice and 'message' in choice:
                 return choice['message'].get('content', '')
-            elif 'text' in choice:
+            elif choice and 'text' in choice:
                 return choice['text']
+        
+        # 检查是否有错误信息
+        if 'error' in result:
+            logger.error(f"LLM API 返回错误: {result['error']}")
         
         logger.warning(f"无法解析 LLM 响应: {result}")
         return ''
