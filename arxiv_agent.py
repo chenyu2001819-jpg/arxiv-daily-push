@@ -395,7 +395,7 @@ class ArxivAgent:
         default_config = {
             'keywords_file': 'keywords.txt',
             'max_results_per_query': 100,
-            'days_back': 10,  # 默认搜索最近10天
+            'days_back': 3,  # 默认搜索最近3天
             'output_dir': 'daily_papers',
             'history_file': 'paper_history.json',
             'email': {'enabled': False},
