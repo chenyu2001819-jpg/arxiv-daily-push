@@ -187,9 +187,10 @@ class KeywordManager:
             if not lines:
                 continue
             
-            # 第一行是块名称
+            # 第一行是块名称（如果包含 ** 或者是纯描述性文字）
             block_name = lines[0]
-            if '关键词' in block_name or block_name.startswith('**'):
+            # 如果第一行包含 ** 或者是英文关键词格式，说明这不是标题而是关键词
+            if '**' in block_name or block_name.startswith(('**', '*', '-', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '0.')):
                 block_name = f"主题块{len(self.blocks) + 1}"
                 keyword_lines = lines
             else:
