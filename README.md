@@ -11,6 +11,7 @@
 - 🔍 **智能搜索**：根据关键词文件自动搜索相关论文，**必须匹配核心关键词**才收录
 - 🎯 **双重排序**：支持按 **相关性** 或 **引用次数** 降序排列
 - 📊 **引用数据**：可选获取论文引用次数，优先推送高影响力文章
+- 🤖 **LLM 智能筛选**：使用大模型（GPT/DeepSeek/Kimi 等）判断论文与关键词的真实相关性，过滤不相关文章
 - 🗂️ **自动分组**：按主题（产业组织/航运环境）自动分类
 - 🚫 **智能去重**：自动记录已推送文章，避免重复
 - ⏰ **定时推送**：支持每天定时自动运行
@@ -230,15 +231,23 @@ git push -u origin main
 # 基础配置
 keywords_file: keywords.txt
 max_results_per_query: 50
-max_papers_per_day: 30
-days_back: 7
+days_back: 3
 output_dir: daily_papers
 history_file: paper_history.json
-min_score_threshold: 2.0  # 文章必须匹配至少一个核心关键词
 
-# 排序配置
-sort_by_citations: false  # 是否按引用次数排序（默认按相关性）
-fetch_citations: false    # 是否获取引用次数（会增加运行时间）
+# 分块筛选配置
+block_config:
+  core_limit: 30       # 每块核心关键词取前N篇
+  extended_limit: 10   # 每块扩展关键词取前N篇
+
+# LLM 智能筛选配置（可选）
+llm:
+  enabled: false
+  api_key: "your-llm-api-key"
+  model: "gpt-3.5-turbo"  # 支持：gpt-3.5-turbo, deepseek-chat, moonshot-v1-8k
+  api_url: "openai"       # 支持：openai, deepseek, moonshot, 或自定义URL
+  min_score: 5.0          # 最低相关性分数 (0-10)
+  top_n: 30               # 最多选取前N篇
 
 # 邮件配置
 email:
@@ -247,7 +256,6 @@ email:
   sender_password: "your_auth_code"
   receiver_emails:
     - "receiver@example.com"
-  # SMTP 配置会自动检测，通常无需手动设置
 ```
 
 ⚠️ **重要**：`config.yaml` 包含敏感信息，已添加到 `.gitignore`，请勿提交到 Git！
@@ -256,16 +264,35 @@ email:
 
 通过 Secrets 配置，更加安全（敏感信息不会暴露在代码中）：
 
+**必需配置：**
 ```
 EMAIL_ENABLED=true
 EMAIL_SENDER=your_email@qq.com
 EMAIL_PASSWORD=your_auth_code
 EMAIL_RECEIVERS=receiver1@qq.com,receiver2@gmail.com
-MAX_PAPERS=30
-DAYS_BACK=7
-MIN_SCORE=2.0
-SORT_BY_CITATIONS=false
 ```
+
+**可选配置（LLM 智能筛选）：**
+```
+LLM_API_KEY=sk-xxxxxxxxxx
+LLM_MODEL=gpt-3.5-turbo
+LLM_API_URL=openai
+LLM_MIN_SCORE=5.0
+LLM_TOP_N=30
+```
+
+**其他可选配置：**
+```
+DAYS_BACK=3
+CORE_LIMIT=30
+EXTENDED_LIMIT=10
+```
+
+**支持的 LLM 服务商：**
+- `openai` - OpenAI GPT 系列
+- `deepseek` - DeepSeek Chat
+- `moonshot` - Moonshot (Kimi)
+- 或直接填写完整 API URL
 
 ---
 
