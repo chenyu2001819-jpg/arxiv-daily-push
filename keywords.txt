@@ -1,47 +1,44 @@
-一、空调市场 / 电车市场 / 耐用消费品：实证产业组织研究
-核心关键词（最精准）
-空调市场
-电动汽车市场 / 电车市场
-耐用消费品
-实证产业组织
-实证 IO
-市场结构
-产品差异化
-需求估计
-供给行为
-定价策略
-市场势力
-福利分析
-扩展检索关键词
-家电市场
-新能源汽车市场
-离散选择模型
-BLP 模型
-结构估计
-寡头竞争
-纵向关系
-技术创新
-政策评估
-消费行为
-二、北极航道 / 全球航运贸易碳排放及其减排
-核心关键词
-北极航道
-北极航运
-全球航运贸易
-海运碳排放
-航运减排
-船舶碳排放
-碳减排政策
-航运碳足迹
-绿色航运
-气候影响
-扩展检索关键词
-国际海运
-海运贸易格局
-碳税
-碳市场
-船舶能效
-低碳航运
-北极环境影响
-贸易路线优化
-可持续航运
+1. Air conditioning market / electric vehicle market / durable consumer goods: empirical industrial organization research
+**Air conditioning market**
+**Electric vehicle market / Electric car market**
+**Durable consumer goods**
+**Empirical industrial organization**
+**Empirical IO**
+**market structure**
+**Product differentiation**
+**Demand estimation**
+**Supply behavior**
+**pricing strategy**
+**Market power**
+**Benefit analysis**
+home appliance market
+New energy vehicle market
+Discrete choice model
+BLP model
+structural estimation
+Oligopolistic competition
+Vertical relationship
+technological innovation
+Policy evaluation
+consumer behavior
+
+II. Arctic Shipping Routes / Carbon Emissions and Reduction in Global Shipping and Trade
+**Arctic shipping route**
+**Arctic shipping**
+**Global shipping trade**
+**Maritime carbon emissions**
+**Emission reduction in shipping**
+**Ship carbon emissions**
+**Carbon emission reduction policy**
+**Shipping carbon footprint**
+**Green shipping**
+**Climate impact**
+International Ocean Freight
+Maritime trade pattern
+carbon tax
+carbon market
+Ship energy efficiency
+Low-carbon shipping
+Environmental impact of the Arctic
+Trade route optimization
+Sustainable shipping
