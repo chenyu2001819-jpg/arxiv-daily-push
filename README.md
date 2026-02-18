@@ -289,10 +289,21 @@ LLM_MAX_RETRIES=3       # 失败重试次数
 **其他可选配置：**
 ```
 DAYS_BACK=3              # 搜索最近几天的文章
+SEARCH_SOURCE=multi      # 搜索源: multi(多源), arxiv, semantic_scholar, openalex
 SORT_BY=submittedDate    # 排序方式: submittedDate(最新) 或 relevance(相关性)
 CORE_LIMIT=30
 EXTENDED_LIMIT=10
+SEMANTIC_SCHOLAR_KEY=    # Semantic Scholar API Key（可选）
+OPENALEX_EMAIL=          # 你的邮箱（建议提供）
 ```
+
+**搜索源对比：**
+| 源 | 限制 | 特点 |
+|----|------|------|
+| `multi` | 较宽松 | 同时使用多个源，结果最全面，**推荐** |
+| `semantic_scholar` | 100/5min | 相关性算法好，包含引用数 |
+| `openalex` | 无限制 | 完全免费开源，数据覆盖广 |
+| `arxiv` | 有限制 | 原始数据源，但噪声较大 |
 
 **支持的 LLM 服务商：**
 - `openai` - OpenAI GPT 系列

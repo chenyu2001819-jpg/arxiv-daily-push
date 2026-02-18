@@ -35,6 +35,13 @@ try:
 except ImportError:
     LLM_AVAILABLE = False
 
+# 导入多源学术搜索模块
+try:
+    from scholar_searcher import MultiSourceSearcher, Paper as ScholarPaper
+    SCHOLAR_AVAILABLE = True
+except ImportError:
+    SCHOLAR_AVAILABLE = False
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -382,14 +389,36 @@ class ArxivAgent:
     def __init__(self, config_file: str = "config.yaml"):
         self.config = self._load_config(config_file)
         self.keyword_manager = KeywordManager(self.config.get('keywords_file', 'keywords.txt'))
-        # 获取排序配置（默认按相关性，可选 submittedDate）
+        
+        # 获取搜索源配置（默认 multi，可选 arxiv, semantic_scholar, openalex）
+        self.search_source = self.config.get('search_source', 'multi')
+        logger.info(f"搜索源: {self.search_source}")
+        
+        # 获取排序配置
         sort_by = self.config.get('sort_by', 'relevance')
         logger.info(f"搜索排序方式: {sort_by} ({'相关性' if sort_by == 'relevance' else '提交日期'})")
         
-        self.searcher = ArxivSearcher(
-            max_results_per_query=self.config.get('max_results_per_query', 100),
-            sort_by=sort_by
-        )
+        # 初始化搜索器
+        self.searcher = None
+        self.multi_searcher = None
+        
+        if self.search_source == 'arxiv':
+            self.searcher = ArxivSearcher(
+                max_results_per_query=self.config.get('max_results_per_query', 100),
+                sort_by=sort_by
+            )
+        elif SCHOLAR_AVAILABLE and self.search_source in ('multi', 'semantic_scholar', 'openalex'):
+            self.multi_searcher = MultiSourceSearcher(
+                semantic_scholar_key=self.config.get('semantic_scholar_key'),
+                openalex_email=self.config.get('openalex_email')
+            )
+        else:
+            # 默认使用 arXiv
+            self.searcher = ArxivSearcher(
+                max_results_per_query=self.config.get('max_results_per_query', 100),
+                sort_by=sort_by
+            )
+        
         self.citation_fetcher = CitationFetcher()
         
         # 邮件发送器
@@ -476,6 +505,15 @@ class ArxivAgent:
         if os.environ.get('SORT_BY'):
             config['sort_by'] = os.environ['SORT_BY']
         
+        if os.environ.get('SEARCH_SOURCE'):
+            config['search_source'] = os.environ['SEARCH_SOURCE']
+        
+        if os.environ.get('SEMANTIC_SCHOLAR_KEY'):
+            config['semantic_scholar_key'] = os.environ['SEMANTIC_SCHOLAR_KEY']
+        
+        if os.environ.get('OPENALEX_EMAIL'):
+            config['openalex_email'] = os.environ['OPENALEX_EMAIL']
+        
         block_config = {}
         if os.environ.get('CORE_LIMIT'):
             block_config['core_limit'] = int(os.environ['CORE_LIMIT'])
@@ -517,6 +555,25 @@ class ArxivAgent:
         }
         with open(self.history_file, 'w', encoding='utf-8') as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
+    
+    def _convert_scholar_papers(self, scholar_papers: List) -> List[Paper]:
+        """将 scholar_searcher 的 Paper 转换为 arxiv_agent 的 Paper"""
+        converted = []
+        for sp in scholar_papers:
+            paper = Paper(
+                title=sp.title,
+                authors=sp.authors,
+                summary=sp.summary,
+                link=sp.link,
+                pdf_link=sp.pdf_link,
+                published=sp.published if sp.published else datetime.now(),
+                categories=sp.categories,
+                primary_category=sp.categories[0] if sp.categories else '',
+                arxiv_id=sp.external_id,
+                citation_count=sp.citation_count
+            )
+            converted.append(paper)
+        return converted
     
     def _get_paper_id(self, paper: Paper) -> str:
         """生成文章唯一ID"""
@@ -577,7 +634,24 @@ class ArxivAgent:
             block_papers: List[Paper] = []
             
             for query in block.search_queries:
-                papers = self.searcher.search(query, days_back=days_back)
+                if self.multi_searcher and self.search_source in ('multi', 'semantic_scholar', 'openalex'):
+                    # 使用多源搜索
+                    if self.search_source == 'multi':
+                        papers = self._convert_scholar_papers(
+                            self.multi_searcher.search_and_merge(query, days_back=days_back)
+                        )
+                    elif self.search_source == 'semantic_scholar':
+                        papers = self._convert_scholar_papers(
+                            self.multi_searcher.searchers['semantic_scholar'].search(query, days_back, 50)
+                        )
+                    else:  # openalex
+                        papers = self._convert_scholar_papers(
+                            self.multi_searcher.searchers['openalex'].search(query, days_back, 50)
+                        )
+                else:
+                    # 使用 arXiv 搜索
+                    papers = self.searcher.search(query, days_back=days_back)
+                
                 for paper in papers:
                     paper_id = self._get_paper_id(paper)
                     if paper_id not in self.seen_ids:

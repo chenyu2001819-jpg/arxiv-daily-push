@@ -110,6 +110,9 @@ jobs:
         USE_TLS: ${{ secrets.USE_TLS }}
         DAYS_BACK: ${{ secrets.DAYS_BACK }}
         SORT_BY: ${{ secrets.SORT_BY }}
+        SEARCH_SOURCE: ${{ secrets.SEARCH_SOURCE }}
+        SEMANTIC_SCHOLAR_KEY: ${{ secrets.SEMANTIC_SCHOLAR_KEY }}
+        OPENALEX_EMAIL: ${{ secrets.OPENALEX_EMAIL }}
         CORE_LIMIT: ${{ github.event.inputs.core_limit }}
         EXTENDED_LIMIT: ${{ github.event.inputs.extended_limit }}
         RESET_HISTORY: ${{ github.event.inputs.reset_history }}

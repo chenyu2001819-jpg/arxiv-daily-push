@@ -10,9 +10,20 @@ keywords_file: keywords.txt
 # 搜索最近几天的文章
 days_back: 3
 
+# 搜索源: 'multi'(多源，推荐), 'arxiv', 'semantic_scholar', 'openalex'
+# multi: 同时使用多个搜索源，结果更全面
+# arxiv: 仅使用 arXiv
+# semantic_scholar: 仅使用 Semantic Scholar
+# openalex: 仅使用 OpenAlex
+search_source: multi
+
 # 搜索排序方式: 'relevance'(相关性) 或 'submittedDate'(提交日期，最新优先)
 # 日常使用推荐 'submittedDate'，每天获取最新文章
 sort_by: submittedDate
+
+# 多源搜索配置（可选）
+semantic_scholar_key: ""  # Semantic Scholar API Key（可选，可提高限制）
+openalex_email: ""        # 你的邮箱（OpenAlex 建议使用，会被添加到 User-Agent）
 
 # 每次查询的最大结果数
 max_results_per_query: 100
