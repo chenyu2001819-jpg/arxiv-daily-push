@@ -33,6 +33,8 @@ class LLMFilter:
         'deepseek': 'https://api.deepseek.com/v1/chat/completions',
         'moonshot': 'https://api.moonshot.cn/v1/chat/completions',
         'zhipu': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+        'gemini': 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
+        'claude': 'https://api.anthropic.com/v1/messages',
     }
     
     def __init__(self, config: LLMConfig):
