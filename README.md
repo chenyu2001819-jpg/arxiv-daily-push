@@ -295,6 +295,7 @@ EXTENDED_LIMIT=10
 - `gemini` - Google Gemini
 - `claude` - Anthropic Claude
 - `zhipu` - 智谱 AI
+- `minimax` - MiniMax
 - 或直接填写完整 API URL
 
 ---

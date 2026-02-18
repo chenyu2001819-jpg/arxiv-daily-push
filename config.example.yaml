@@ -40,7 +40,7 @@ llm:
   # Gemini: gemini-pro, gemini-1.5-flash
   # Claude: claude-3-sonnet-20240229, claude-3-opus-20240229
   model: "gpt-3.5-turbo"
-  # 服务商：openai, deepseek, moonshot, gemini, claude, 或自定义URL
+  # 服务商：openai, deepseek, moonshot, gemini, claude, minimax, 或自定义URL
   api_url: "openai"
   min_score: 5.0          # 最低相关性分数（0-10），低于此分数的文章会被过滤
   top_n: 30               # 最多选取前N篇（按LLM评分排序），不设置则不过滤数量
