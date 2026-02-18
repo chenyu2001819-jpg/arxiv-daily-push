@@ -578,24 +578,19 @@ class ArxivAgent:
             
             # 打印前几篇的匹配情况用于调试
             if core_papers:
-                logger.info("核心匹配文章示例:")
+                logger.info("核心文章示例:")
                 for i, p in enumerate(core_papers[:3], 1):
-                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{p.matched_keywords})")
+                    kw_str = ','.join(p.matched_keywords[:2]) if p.matched_keywords else 'N/A'
+                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{kw_str})")
             
             if extended_papers:
-                logger.info("扩展匹配文章示例:")
+                logger.info("扩展文章示例:")
                 for i, p in enumerate(extended_papers[:3], 1):
-                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{p.matched_keywords})")
+                    kw_str = ','.join(p.matched_keywords[:2]) if p.matched_keywords else 'N/A'
+                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{kw_str})")
             
-            # 选取前N篇（如果数量不够，取所有）
-            selected_core = core_papers[:core_limit] if len(core_papers) >= core_limit else core_papers
-            selected_extended = extended_papers[:extended_limit] if len(extended_papers) >= extended_limit else extended_papers
-            
-            logger.info(f"选取核心文章: {len(selected_core)} 篇 (共{len(core_papers)}篇)")
-            logger.info(f"选取扩展文章: {len(selected_extended)} 篇 (共{len(extended_papers)}篇)")
-            
-            # 合并该主题的文章
-            block_selected = selected_core + selected_extended
+            # 合并该主题的文章（core_papers 和 extended_papers 已经是选取后的结果）
+            block_selected = core_papers + extended_papers
             all_selected_papers.extend(block_selected)
         
         logger.info(f"\n{'='*60}")
