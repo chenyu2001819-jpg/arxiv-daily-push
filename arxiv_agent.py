@@ -595,6 +595,25 @@ class ArxivAgent:
                 logger.warning(f"主题块 '{block.name}' 没有找到新文章")
                 continue
             
+            # 过滤：只保留标题或摘要中包含核心关键词的文章
+            filtered_papers = []
+            for paper in block_papers:
+                title_summary = (paper.title + " " + paper.summary).lower()
+                # 检查是否包含核心关键词
+                for kw in block.core_keywords:
+                    if kw.lower() in title_summary:
+                        filtered_papers.append(paper)
+                        break
+            
+            if len(filtered_papers) < len(block_papers):
+                logger.info(f"过滤后剩余 {len(filtered_papers)} 篇相关文章 (过滤掉 {len(block_papers) - len(filtered_papers)} 篇)")
+            
+            block_papers = filtered_papers
+            
+            if not block_papers:
+                logger.warning(f"主题块 '{block.name}' 过滤后没有相关文章")
+                continue
+            
             # 获取引用次数
             self.citation_fetcher.batch_get_citations(block_papers)
             
@@ -602,31 +621,19 @@ class ArxivAgent:
             block_papers.sort(key=lambda p: -p.citation_count)
             
             # 分类：核心关键词匹配 vs 扩展关键词匹配
-            # 简化策略：因为搜索已经用了关键词，返回的文章就是相关的
-            # 我们只需要按引用次数排序，然后前N篇标记为核心，后面的为扩展
-            
-            # 按引用次数排序（高到低）
-            block_papers.sort(key=lambda p: -p.citation_count)
-            
             # 前core_limit篇为核心，后面为扩展
             core_papers = block_papers[:core_limit] if len(block_papers) >= core_limit else block_papers
             extended_papers = block_papers[core_limit:core_limit+extended_limit] if len(block_papers) > core_limit else []
             
-            # 标记类型和匹配的关键词
-            for paper in core_papers:
-                paper.keyword_type = "core"
-                # 尝试找出匹配的核心关键词
+            # 标记类型和匹配的关键词（所有文章都已通过核心关键词过滤）
+            all_selected = core_papers + extended_papers
+            for paper in all_selected:
+                paper.keyword_type = "matched"
+                # 找出匹配的核心关键词
                 _, matched = self._keyword_match(paper.title + " " + paper.summary, block.core_keywords)
-                paper.matched_keywords = matched if matched else ["core topic"]
+                paper.matched_keywords = matched if matched else ["matched"]
             
-            for paper in extended_papers:
-                paper.keyword_type = "extended"
-                # 尝试找出匹配的扩展关键词
-                _, matched = self._keyword_match(paper.title + " " + paper.summary, block.extended_keywords)
-                paper.matched_keywords = matched if matched else ["extended topic"]
-            
-            logger.info(f"核心关键词文章: {len(core_papers)} 篇")
-            logger.info(f"扩展关键词文章: {len(extended_papers)} 篇")
+            logger.info(f"相关文章: {len(core_papers)} 篇 (核心) + {len(extended_papers)} 篇 (扩展) = {len(all_selected)} 篇")
             
             # 打印前几篇的匹配情况用于调试
             if core_papers:
