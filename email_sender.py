@@ -203,8 +203,9 @@ class EmailSender:
                 summary = summary.replace('<', '&lt;').replace('>', '&gt;')  # 转义 HTML
                 
                 # 构建元信息行，包括引用次数
+                pub_date = paper.published.strftime('%Y-%m-%d')
                 meta_line = f'<span>👤 {authors_str}</span>'
-                meta_line += f'<span>📅 {paper.published.strftime(\'%Y-%m-%d\')}</span>'
+                meta_line += f'<span>📅 {pub_date}</span>'
                 meta_line += f'<span>📂 {paper.primary_category}</span>'
                 meta_line += f'<span class="score">⭐ {paper.score:.1f}</span>'
                 if paper.citation_count > 0:
