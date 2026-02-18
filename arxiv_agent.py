@@ -300,19 +300,23 @@ class ArxivSearcher:
     
     ARXIV_API_URL = "http://export.arxiv.org/api/query"
     
-    def __init__(self, max_results_per_query: int = 100):
+    def __init__(self, max_results_per_query: int = 100, sort_by: str = 'relevance'):
         self.max_results_per_query = max_results_per_query
+        self.sort_by = sort_by  # 'relevance' 或 'submittedDate'
     
     def search(self, query: str, days_back: int = 30) -> List[Paper]:
         """搜索 arXiv 文章"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         
+        # 根据配置选择排序方式
+        sort_by = getattr(self, 'sort_by', 'relevance')  # 默认按相关性
+        
         params = {
             'search_query': f'all:{query}',
             'start': 0,
             'max_results': self.max_results_per_query,
-            'sortBy': 'relevance',      # 按相关性排序（arXiv 原生支持）
+            'sortBy': sort_by,  # 'relevance' 或 'submittedDate'
             'sortOrder': 'descending'
         }
         
@@ -378,8 +382,13 @@ class ArxivAgent:
     def __init__(self, config_file: str = "config.yaml"):
         self.config = self._load_config(config_file)
         self.keyword_manager = KeywordManager(self.config.get('keywords_file', 'keywords.txt'))
+        # 获取排序配置（默认按相关性，可选 submittedDate）
+        sort_by = self.config.get('sort_by', 'relevance')
+        logger.info(f"搜索排序方式: {sort_by} ({'相关性' if sort_by == 'relevance' else '提交日期'})")
+        
         self.searcher = ArxivSearcher(
-            max_results_per_query=self.config.get('max_results_per_query', 100)
+            max_results_per_query=self.config.get('max_results_per_query', 100),
+            sort_by=sort_by
         )
         self.citation_fetcher = CitationFetcher()
         
@@ -463,6 +472,9 @@ class ArxivAgent:
         
         if os.environ.get('DAYS_BACK'):
             config['days_back'] = int(os.environ['DAYS_BACK'])
+        
+        if os.environ.get('SORT_BY'):
+            config['sort_by'] = os.environ['SORT_BY']
         
         block_config = {}
         if os.environ.get('CORE_LIMIT'):

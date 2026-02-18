@@ -287,7 +287,8 @@ LLM_MAX_RETRIES=3       # 失败重试次数
 
 **其他可选配置：**
 ```
-DAYS_BACK=3
+DAYS_BACK=3              # 搜索最近几天的文章
+SORT_BY=submittedDate    # 排序方式: submittedDate(最新) 或 relevance(相关性)
 CORE_LIMIT=30
 EXTENDED_LIMIT=10
 ```

@@ -10,6 +10,10 @@ keywords_file: keywords.txt
 # 搜索最近几天的文章
 days_back: 3
 
+# 搜索排序方式: 'relevance'(相关性) 或 'submittedDate'(提交日期，最新优先)
+# 日常使用推荐 'submittedDate'，每天获取最新文章
+sort_by: submittedDate
+
 # 每次查询的最大结果数
 max_results_per_query: 100
 
