@@ -1,39 +1,30 @@
 # ============================================
 # arXiv Agent 配置示例文件
 # ============================================
-# 使用说明：
-# 1. 复制此文件为 config.yaml: cp config.example.yaml config.yaml
-# 2. 编辑 config.yaml，填入你的真实配置
-# 3. 确保 config.yaml 在 .gitignore 中，不要提交到 Git！
+# 复制此文件为 config.yaml: cp config.example.yaml config.yaml
+# 编辑 config.yaml，填入你的真实配置
 
 # 基础配置
 keywords_file: keywords.txt
 
-# 每次查询的最大结果数
-max_results_per_query: 50
-
-# 每天推送的最大文章数
-max_papers_per_day: 30
-
 # 搜索最近几天的文章
-days_back: 7
+days_back: 30
+
+# 每次查询的最大结果数
+max_results_per_query: 100
 
 # 输出目录
 output_dir: daily_papers
 
-# 历史记录文件（用于去重）
+# 历史记录文件
 history_file: paper_history.json
 
-# 最小相关性得分阈值（文章必须匹配至少一个核心关键词）
-# 建议保持默认值 2.0，确保文章与关键词高度相关
-min_score_threshold: 2.0
-
-# 是否按引用次数排序（默认按相关性排序）
-# 注意：开启此选项会增加运行时间，需要获取引用数据
-sort_by_citations: false
-
-# 是否获取引用次数（即使不按引用排序，也可以获取显示）
-fetch_citations: false
+# ============================================
+# 分块筛选配置
+# ============================================
+block_config:
+  core_limit: 30       # 每块核心关键词取前N篇（按引用次数）
+  extended_limit: 10   # 每块扩展关键词取前N篇（按引用次数）
 
 # ============================================
 # 邮件配置
@@ -44,8 +35,3 @@ email:
   sender_password: "your_auth_code_here"
   receiver_emails:
     - "receiver@example.com"
-  # SMTP 配置通常无需手动设置，程序会自动检测
-  # smtp_host: "smtp.qq.com"
-  # smtp_port: 465
-  # use_ssl: true
-  # use_tls: false

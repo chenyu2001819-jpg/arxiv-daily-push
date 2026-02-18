@@ -16,16 +16,18 @@ on:
         options:
           - 'true'
           - 'false'
-      debug_mode:
-        description: '调试模式（放宽搜索条件）'
+      core_limit:
+        description: '核心关键词选取数量'
         required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+        default: '30'
+        type: string
+      extended_limit:
+        description: '扩展关键词选取数量'
+        required: false
+        default: '10'
+        type: string
 
-# 设置权限，允许写入仓库内容
+# 设置权限
 permissions:
   contents: write
 
@@ -59,26 +61,13 @@ jobs:
         restore-keys: |
           paper-history-
     
-    - name: Debug Secrets
+    - name: Show configuration
       run: |
-        echo "Checking if secrets are set..."
-        if [ -n "${{ secrets.EMAIL_ENABLED }}" ]; then
-          echo "✓ EMAIL_ENABLED is set: ${{ secrets.EMAIL_ENABLED }}"
-        else
-          echo "✗ EMAIL_ENABLED is NOT set"
-        fi
-        if [ -n "${{ secrets.EMAIL_SENDER }}" ]; then
-          echo "✓ EMAIL_SENDER is set: ${{ secrets.EMAIL_SENDER }}"
-        else
-          echo "✗ EMAIL_SENDER is NOT set"
-        fi
-        if [ -n "${{ secrets.EMAIL_RECEIVERS }}" ]; then
-          echo "✓ EMAIL_RECEIVERS is set: ${{ secrets.EMAIL_RECEIVERS }}"
-        else
-          echo "✗ EMAIL_RECEIVERS is NOT set"
-        fi
-        echo ""
-        echo "调试模式: ${{ github.event.inputs.debug_mode }}"
+        echo "配置信息："
+        echo "  核心关键词数量: ${{ github.event.inputs.core_limit || '30' }}"
+        echo "  扩展关键词数量: ${{ github.event.inputs.extended_limit || '10' }}"
+        echo "  关键词文件内容:"
+        cat keywords.txt | head -50
     
     - name: Test email configuration
       if: github.event.inputs.test_email == 'true'
@@ -104,10 +93,9 @@ jobs:
         SMTP_PORT: ${{ secrets.SMTP_PORT }}
         USE_SSL: ${{ secrets.USE_SSL }}
         USE_TLS: ${{ secrets.USE_TLS }}
-        MAX_PAPERS: ${{ secrets.MAX_PAPERS }}
         DAYS_BACK: ${{ secrets.DAYS_BACK }}
-        MIN_SCORE: ${{ github.event.inputs.debug_mode == 'true' && '0.5' || secrets.MIN_SCORE }}
-        SORT_BY_CITATIONS: ${{ secrets.SORT_BY_CITATIONS }}
+        CORE_LIMIT: ${{ github.event.inputs.core_limit }}
+        EXTENDED_LIMIT: ${{ github.event.inputs.extended_limit }}
       run: |
         echo "开始运行 arXiv Agent..."
         python arxiv_agent.py 2>&1
@@ -118,10 +106,9 @@ jobs:
       run: |
         echo "检查生成的文件..."
         ls -la daily_papers/ 2>/dev/null || echo "daily_papers 目录不存在"
-        ls -la paper_history.json 2>/dev/null || echo "paper_history.json 不存在"
         echo ""
-        echo "关键词文件内容:"
-        head -20 keywords.txt
+        echo "报告文件列表:"
+        ls -la daily_papers/*.md 2>/dev/null || echo "没有生成报告文件"
     
     - name: Save paper history
       uses: actions/cache@v4
