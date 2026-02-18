@@ -88,40 +88,34 @@ class KeywordBlock:
         translations = {
             # 产业组织
             '空调市场': 'air conditioner market',
+            'air conditioner market': 'air conditioner market',
             '电动汽车市场': 'electric vehicle market',
+            'electric vehicle market': 'electric vehicle market',
             '电车市场': 'EV market',
             '耐用消费品': 'durable goods',
             '实证产业组织': 'empirical industrial organization',
             '实证 io': 'empirical IO',
-            '实证产业组织学': 'empirical industrial organization',
             '市场结构': 'market structure',
             '产品差异化': 'product differentiation',
             '需求估计': 'demand estimation',
-            '需求估计模型': 'demand estimation',
             '供给行为': 'supply behavior',
             '定价策略': 'pricing strategy',
             '市场势力': 'market power',
             '福利分析': 'welfare analysis',
             '家电市场': 'appliance market',
-            '家用电器市场': 'home appliance market',
             '新能源汽车市场': 'new energy vehicle market',
             '离散选择模型': 'discrete choice model',
-            'blp 模型': 'BLP model',
+            'blp 模型': 'BLP',
             'blp': 'BLP',
             '结构估计': 'structural estimation',
-            '结构式估计': 'structural estimation',
             '寡头竞争': 'oligopoly competition',
-            '寡头垄断': 'oligopoly',
             '纵向关系': 'vertical relationship',
             '技术创新': 'technological innovation',
-            '技术变革': 'technological change',
             '政策评估': 'policy evaluation',
-            '政策评价': 'policy evaluation',
             '消费行为': 'consumer behavior',
-            '消费者行为': 'consumer behavior',
             # 航运相关
             '北极航道': 'Arctic shipping',
-            '北极航线': 'Arctic shipping route',
+            '北极航线': 'Arctic shipping',
             '北极航运': 'Arctic shipping',
             '全球航运贸易': 'global shipping trade',
             '全球海运贸易': 'global maritime trade',
@@ -131,22 +125,16 @@ class KeywordBlock:
             '船舶碳排放': 'vessel carbon emission',
             '船舶排放': 'vessel emission',
             '碳减排政策': 'carbon reduction policy',
-            '碳排放政策': 'carbon emission policy',
             '航运碳足迹': 'shipping carbon footprint',
             '绿色航运': 'green shipping',
             '气候影响': 'climate impact',
-            '气候变化影响': 'climate impact',
             '国际海运': 'international shipping',
-            '国际航运': 'international shipping',
             '海运贸易格局': 'maritime trade pattern',
             '航运贸易': 'shipping trade',
             '碳税': 'carbon tax',
             '碳市场': 'carbon market',
-            '碳交易市场': 'carbon market',
             '船舶能效': 'ship energy efficiency',
-            '船舶能源效率': 'ship energy efficiency',
             '低碳航运': 'low carbon shipping',
-            '低碳海运': 'low carbon shipping',
             '北极环境影响': 'Arctic environmental impact',
             '贸易路线优化': 'trade route optimization',
             '航线优化': 'route optimization',
@@ -156,13 +144,23 @@ class KeywordBlock:
         
         queries = set()
         for kw in self.all_keywords:
-            kw_lower = kw.lower()
-            if kw_lower.isascii():
-                queries.add(kw_lower)
+            kw_clean = kw.strip().lower()
+            # 移除 ** 标记
+            kw_clean = kw_clean.replace('**', '').strip()
+            
+            if not kw_clean:
+                continue
+                
+            # 直接使用英文关键词
+            if kw_clean.isascii():
+                queries.add(kw_clean)
+            # 使用翻译后的英文
             elif kw in translations:
                 queries.add(translations[kw])
+            elif kw_clean in translations:
+                queries.add(translations[kw_clean])
         
-        return list(queries) if queries else ['industrial organization', 'market structure']
+        return list(queries) if queries else ['industrial organization', 'shipping']
 
 
 class KeywordManager:
@@ -174,7 +172,7 @@ class KeywordManager:
         self._load_keywords()
     
     def _load_keywords(self):
-        """从文件加载关键词，分成多个块"""
+        """从文件加载关键词，支持 ** 标记区分核心和扩展"""
         if not os.path.exists(self.keywords_file):
             raise FileNotFoundError(f"关键词文件不存在: {self.keywords_file}")
         
@@ -189,44 +187,56 @@ class KeywordManager:
             if not lines:
                 continue
             
-            # 第一行是块名称（如果不是关键词行）
+            # 第一行是块名称
             block_name = lines[0]
-            if '关键词' in block_name or '扩展' in block_name:
+            if '关键词' in block_name or block_name.startswith('**'):
                 block_name = f"主题块{len(self.blocks) + 1}"
                 keyword_lines = lines
             else:
                 keyword_lines = lines[1:]
             
             # 分离核心关键词和扩展关键词
+            # 核心关键词：**关键词** 或没有标记的
+            # 扩展关键词：普通关键词或标记为扩展的
             core_keywords = []
             extended_keywords = []
-            is_extended = False
             
             for line in keyword_lines:
+                # 跳过标题行
                 if '关键词' in line.lower() or line.endswith('关键词'):
-                    continue
-                if '扩展' in line.lower():
-                    is_extended = True
                     continue
                 
                 # 分割一行中的多个关键词
-                sub_keywords = re.split(r'[\s、,，]+', line)
+                sub_keywords = re.split(r'[、,，]+', line)
+                
                 for kw in sub_keywords:
-                    kw = kw.strip().lower()
-                    if kw and len(kw) > 1:
-                        if is_extended:
-                            extended_keywords.append(kw)
-                        else:
-                            core_keywords.append(kw)
+                    kw = kw.strip()
+                    if not kw or len(kw) <= 1:
+                        continue
+                    
+                    # 检查是否是 ** 标记的核心关键词
+                    if kw.startswith('**') and kw.endswith('**'):
+                        # **关键词** 格式
+                        core_keywords.append(kw.replace('**', '').strip())
+                    elif kw.startswith('**'):
+                        # **关键词 格式（行尾没有**）
+                        core_keywords.append(kw.replace('**', '').strip())
+                    elif '**' in kw:
+                        # 关键词** 格式
+                        core_keywords.append(kw.replace('**', '').strip())
+                    else:
+                        # 普通关键词，作为扩展
+                        extended_keywords.append(kw)
             
             if core_keywords or extended_keywords:
                 block = KeywordBlock(block_name, core_keywords, extended_keywords)
                 self.blocks.append(block)
-                logger.info(f"加载主题块 '{block_name}': {len(core_keywords)} 核心, {len(extended_keywords)} 扩展")
+                logger.info(f"加载主题块 '{block_name}':")
+                logger.info(f"  核心关键词: {core_keywords}")
+                logger.info(f"  扩展关键词: {extended_keywords}")
                 logger.info(f"  搜索查询: {block.search_queries}")
         
         if not self.blocks:
-            # 默认创建两个块
             logger.warning("未找到关键词块，创建默认块")
             self.blocks = [
                 KeywordBlock("产业组织", ['market structure', 'industrial organization'], ['pricing']),
@@ -260,6 +270,9 @@ class CitationFetcher:
     
     def batch_get_citations(self, papers: List[Paper]) -> None:
         """批量获取引用次数"""
+        if not papers:
+            return
+            
         logger.info(f"正在获取 {len(papers)} 篇论文的引用次数...")
         
         for i, paper in enumerate(papers):
@@ -380,14 +393,13 @@ class ArxivAgent:
         default_config = {
             'keywords_file': 'keywords.txt',
             'max_results_per_query': 100,
-            'days_back': 30,  # 搜索最近30天的文章
+            'days_back': 90,  # 默认搜索最近90天
             'output_dir': 'daily_papers',
             'history_file': 'paper_history.json',
             'email': {'enabled': False},
-            # 分块筛选配置
             'block_config': {
-                'core_limit': 30,      # 每块核心关键词取前30篇
-                'extended_limit': 10,  # 每块扩展关键词取前10篇
+                'core_limit': 30,
+                'extended_limit': 10,
             }
         }
         
@@ -424,7 +436,6 @@ class ArxivAgent:
         if os.environ.get('DAYS_BACK'):
             config['days_back'] = int(os.environ['DAYS_BACK'])
         
-        # 分块配置
         block_config = {}
         if os.environ.get('CORE_LIMIT'):
             block_config['core_limit'] = int(os.environ['CORE_LIMIT'])
@@ -459,41 +470,60 @@ class ArxivAgent:
         """生成文章唯一ID"""
         return paper.arxiv_id if paper.arxiv_id else paper.title[:50]
     
-    def _keyword_match_score(self, text: str, keywords: List[str]) -> float:
-        """计算文本与关键词的匹配分数"""
+    def _keyword_match(self, text: str, keywords: List[str]) -> Tuple[bool, List[str]]:
+        """检查文本是否匹配关键词，返回(是否匹配, 匹配的关键词列表)"""
         text_lower = text.lower()
-        score = 0
+        matched = []
+        
         for kw in keywords:
-            kw_lower = kw.lower()
+            kw_lower = kw.lower().strip()
+            if not kw_lower:
+                continue
+            
+            # 直接匹配
             if kw_lower in text_lower:
-                # 标题匹配权重更高
-                score += 2 if text_lower.startswith(kw_lower) else 1
-        return score
+                matched.append(kw)
+                continue
+            
+            # 处理空格差异
+            if kw_lower.replace(' ', '') in text_lower.replace(' ', ''):
+                matched.append(kw)
+        
+        return len(matched) > 0, matched
     
-    def run(self, send_email: bool = True) -> str:
+    def run(self, send_email: bool = True, reset_history: bool = False) -> str:
         """执行每日文章抓取和推送"""
         logger.info("=" * 60)
         logger.info("开始执行 arXiv 文章推送任务")
         logger.info("=" * 60)
         
+        # 如果需要重置历史（用于测试）
+        if reset_history:
+            logger.info("重置历史记录")
+            self.seen_ids = set()
+        
         block_config = self.config.get('block_config', {})
         core_limit = block_config.get('core_limit', 30)
         extended_limit = block_config.get('extended_limit', 10)
-        days_back = self.config.get('days_back', 30)
+        days_back = self.config.get('days_back', 90)
         
         logger.info(f"配置：核心关键词前{core_limit}篇，扩展关键词前{extended_limit}篇")
+        logger.info(f"搜索最近 {days_back} 天的文章")
         
         all_selected_papers: List[Paper] = []
         
         # 对每个主题块进行处理
         for block in self.keyword_manager.blocks:
-            logger.info(f"\n处理主题块: {block.name}")
-            logger.info(f"  核心关键词: {block.core_keywords}")
-            logger.info(f"  扩展关键词: {block.extended_keywords}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"处理主题块: {block.name}")
+            logger.info(f"{'='*60}")
+            logger.info(f"核心关键词: {block.core_keywords}")
+            logger.info(f"扩展关键词: {block.extended_keywords}")
+            logger.info(f"搜索查询: {block.search_queries}")
             
+            # 搜索该主题的所有查询词
             block_papers: List[Paper] = []
             
-            # 搜索该主题的所有关键词
             for query in block.search_queries:
                 papers = self.searcher.search(query, days_back=days_back)
                 for paper in papers:
@@ -502,18 +532,21 @@ class ArxivAgent:
                         paper.source_block = block.name
                         block_papers.append(paper)
                         self.seen_ids.add(paper_id)
+                    else:
+                        logger.debug(f"  跳过已存在的文章: {paper.title[:40]}...")
                 import time
                 time.sleep(1)
             
-            logger.info(f"  找到 {len(block_papers)} 篇新文章")
+            logger.info(f"找到 {len(block_papers)} 篇新文章")
             
             if not block_papers:
+                logger.warning(f"主题块 '{block.name}' 没有找到新文章")
                 continue
             
             # 获取引用次数
             self.citation_fetcher.batch_get_citations(block_papers)
             
-            # 按引用次数排序
+            # 按引用次数排序（高到低）
             block_papers.sort(key=lambda p: -p.citation_count)
             
             # 分类：核心关键词匹配 vs 扩展关键词匹配
@@ -524,49 +557,64 @@ class ArxivAgent:
                 title_summary = paper.title + " " + paper.summary
                 
                 # 检查是否匹配核心关键词
-                core_score = self._keyword_match_score(title_summary, block.core_keywords)
-                if core_score > 0:
-                    paper.matched_keywords = [kw for kw in block.core_keywords 
-                                              if kw.lower() in title_summary.lower()]
+                is_core_match, core_matched = self._keyword_match(title_summary, block.core_keywords)
+                if is_core_match:
+                    paper.matched_keywords = core_matched
                     paper.keyword_type = "core"
                     core_papers.append(paper)
                     continue
                 
                 # 检查是否匹配扩展关键词
-                ext_score = self._keyword_match_score(title_summary, block.extended_keywords)
-                if ext_score > 0:
-                    paper.matched_keywords = [kw for kw in block.extended_keywords 
-                                              if kw.lower() in title_summary.lower()]
+                is_ext_match, ext_matched = self._keyword_match(title_summary, block.extended_keywords)
+                if is_ext_match:
+                    paper.matched_keywords = ext_matched
                     paper.keyword_type = "extended"
                     extended_papers.append(paper)
             
-            logger.info(f"  核心关键词匹配: {len(core_papers)} 篇")
-            logger.info(f"  扩展关键词匹配: {len(extended_papers)} 篇")
+            logger.info(f"核心关键词匹配: {len(core_papers)} 篇")
+            logger.info(f"扩展关键词匹配: {len(extended_papers)} 篇")
             
-            # 选取前N篇
-            selected_core = core_papers[:core_limit]
-            selected_extended = extended_papers[:extended_limit]
+            # 打印前几篇的匹配情况用于调试
+            if core_papers:
+                logger.info("核心匹配文章示例:")
+                for i, p in enumerate(core_papers[:3], 1):
+                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{p.matched_keywords})")
             
-            logger.info(f"  选取核心文章: {len(selected_core)} 篇")
-            logger.info(f"  选取扩展文章: {len(selected_extended)} 篇")
+            if extended_papers:
+                logger.info("扩展匹配文章示例:")
+                for i, p in enumerate(extended_papers[:3], 1):
+                    logger.info(f"  {i}. {p.title[:60]}... (引用:{p.citation_count}, 关键词:{p.matched_keywords})")
+            
+            # 选取前N篇（如果数量不够，取所有）
+            selected_core = core_papers[:core_limit] if len(core_papers) >= core_limit else core_papers
+            selected_extended = extended_papers[:extended_limit] if len(extended_papers) >= extended_limit else extended_papers
+            
+            logger.info(f"选取核心文章: {len(selected_core)} 篇 (共{len(core_papers)}篇)")
+            logger.info(f"选取扩展文章: {len(selected_extended)} 篇 (共{len(extended_papers)}篇)")
             
             # 合并该主题的文章
             block_selected = selected_core + selected_extended
             all_selected_papers.extend(block_selected)
         
-        logger.info(f"\n总共选取 {len(all_selected_papers)} 篇文章")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"总共选取 {len(all_selected_papers)} 篇文章")
+        logger.info(f"{'='*60}")
         
         if not all_selected_papers:
-            logger.warning("没有找到任何文章")
+            logger.warning("没有找到任何文章，请检查：")
+            logger.warning("  1. 关键词是否正确")
+            logger.warning("  2. 搜索时间范围是否合适")
+            logger.warning("  3. 是否需要重置历史记录")
             return ""
         
         # 按主题和引用次数排序
         all_selected_papers.sort(key=lambda p: (p.source_block, -p.citation_count))
         
-        # 打印选中的文章
+        # 打印最终选中的文章
+        logger.info("\n最终选中的文章列表:")
         for i, paper in enumerate(all_selected_papers, 1):
-            logger.info(f"  {i}. [{paper.source_block}/{paper.keyword_type}] "
-                       f"{paper.title[:50]}... (引用: {paper.citation_count})")
+            logger.info(f"{i}. [{paper.source_block}/{paper.keyword_type}] "
+                       f"{paper.title[:50]}... (引用:{paper.citation_count})")
         
         # 生成报告
         output_path = self._generate_report(all_selected_papers)
@@ -674,6 +722,7 @@ def main():
     parser.add_argument('--config', default='config.yaml', help='配置文件路径')
     parser.add_argument('--core-limit', type=int, default=30, help='核心关键词选取数量')
     parser.add_argument('--extended-limit', type=int, default=10, help='扩展关键词选取数量')
+    parser.add_argument('--reset-history', action='store_true', help='重置历史记录')
     
     args = parser.parse_args()
     
@@ -685,7 +734,7 @@ def main():
     if args.extended_limit:
         agent.config.setdefault('block_config', {})['extended_limit'] = args.extended_limit
     
-    report_path = agent.run(send_email=not args.no_email)
+    report_path = agent.run(send_email=not args.no_email, reset_history=args.reset_history)
     
     if report_path:
         print(f"\n✅ 报告已生成: {report_path}")
