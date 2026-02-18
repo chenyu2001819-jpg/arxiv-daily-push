@@ -72,8 +72,16 @@ class LLMFilter:
                 # OpenAI 兼容格式
                 return self._call_openai_compatible(url, prompt)
             
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"LLM API HTTP 错误: {e}")
+            if e.response is not None:
+                logger.error(f"响应状态码: {e.response.status_code}")
+                logger.error(f"响应内容: {e.response.text[:500]}")
+            return ''
         except Exception as e:
             logger.error(f"LLM API 调用失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return ''
     
     def _call_openai_compatible(self, url: str, prompt: str) -> str:
