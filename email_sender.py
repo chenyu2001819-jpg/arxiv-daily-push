@@ -207,7 +207,10 @@ class EmailSender:
                 meta_line = f'<span>👤 {authors_str}</span>'
                 meta_line += f'<span>📅 {pub_date}</span>'
                 meta_line += f'<span>📂 {paper.primary_category}</span>'
-                meta_line += f'<span class="score">⭐ {paper.score:.1f}</span>'
+                # 显示文章类型（核心/扩展）
+                if hasattr(paper, 'keyword_type') and paper.keyword_type:
+                    type_label = "核心" if paper.keyword_type == "core" else "扩展"
+                    meta_line += f'<span class="score">📌 {type_label}</span>'
                 if paper.citation_count > 0:
                     meta_line += f'<span style="color: #28a745; font-weight: 600;">📈 被引 {paper.citation_count} 次</span>'
                 
@@ -249,7 +252,10 @@ class EmailSender:
             text += f"   作者: {', '.join(paper.authors[:5])}\n"
             text += f"   日期: {paper.published.strftime('%Y-%m-%d')}\n"
             text += f"   分类: {paper.primary_category}\n"
-            text += f"   得分: {paper.score:.1f}\n"
+            # 显示文章类型
+            if hasattr(paper, 'keyword_type') and paper.keyword_type:
+                type_label = "核心" if paper.keyword_type == "core" else "扩展"
+                text += f"   类型: {type_label}\n"
             if paper.citation_count > 0:
                 text += f"   被引: {paper.citation_count} 次\n"
             text += f"   链接: {paper.link}\n"
