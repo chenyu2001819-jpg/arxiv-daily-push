@@ -35,7 +35,7 @@ class LLMFilter:
         'zhipu': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
         'gemini': 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
         'claude': 'https://api.anthropic.com/v1/messages',
-        'minimax': 'https://api.minimax.chat/v1/text/chatcompletion_v2',
+        'minimax': 'https://api.minimaxi.com/anthropic',
     }
     
     def __init__(self, config: LLMConfig, delay: float = 2.0, max_retries: int = 3):
