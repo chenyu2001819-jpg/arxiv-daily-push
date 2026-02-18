@@ -202,14 +202,19 @@ class EmailSender:
                 summary = paper.summary[:300] + '...' if len(paper.summary) > 300 else paper.summary
                 summary = summary.replace('<', '&lt;').replace('>', '&gt;')  # 转义 HTML
                 
+                # 构建元信息行，包括引用次数
+                meta_line = f'<span>👤 {authors_str}</span>'
+                meta_line += f'<span>📅 {paper.published.strftime(\'%Y-%m-%d\')}</span>'
+                meta_line += f'<span>📂 {paper.primary_category}</span>'
+                meta_line += f'<span class="score">⭐ {paper.score:.1f}</span>'
+                if paper.citation_count > 0:
+                    meta_line += f'<span style="color: #28a745; font-weight: 600;">📈 被引 {paper.citation_count} 次</span>'
+                
                 html += f"""
         <div class="paper">
             <div class="paper-title">{paper_num}. {paper.title}</div>
             <div class="paper-meta">
-                <span>👤 {authors_str}</span>
-                <span>📅 {paper.published.strftime('%Y-%m-%d')}</span>
-                <span>📂 {paper.primary_category}</span>
-                <span class="score">⭐ {paper.score:.1f}</span>
+                {meta_line}
             </div>
             <div>{keywords_html}</div>
             <div class="summary">{summary}</div>
@@ -244,6 +249,8 @@ class EmailSender:
             text += f"   日期: {paper.published.strftime('%Y-%m-%d')}\n"
             text += f"   分类: {paper.primary_category}\n"
             text += f"   得分: {paper.score:.1f}\n"
+            if paper.citation_count > 0:
+                text += f"   被引: {paper.citation_count} 次\n"
             text += f"   链接: {paper.link}\n"
             text += f"   PDF: {paper.pdf_link}\n"
             text += "\n"

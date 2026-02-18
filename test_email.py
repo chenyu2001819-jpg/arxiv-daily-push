@@ -7,6 +7,7 @@ arXiv Agent 邮件配置测试工具
 import os
 import sys
 import yaml
+from datetime import datetime
 
 print("=" * 60)
 print("📧 arXiv Agent 邮件配置测试工具")
@@ -130,6 +131,63 @@ try:
         print("=" * 60)
         print("✅ 邮件配置测试通过！")
         print("=" * 60)
+        print()
+        
+        # 发送测试邮件
+        print("正在发送测试邮件...")
+        
+        # 创建测试用的简单邮件内容
+        from dataclasses import dataclass, field
+        from typing import List
+        
+        @dataclass
+        class TestPaper:
+            title: str
+            authors: List[str]
+            summary: str
+            link: str
+            pdf_link: str
+            published: datetime
+            categories: List[str]
+            primary_category: str
+            score: float = 0.0
+            matched_keywords: List[str] = field(default_factory=list)
+        
+        test_papers = [
+            TestPaper(
+                title="Test Email - arXiv Daily Push Configuration",
+                authors=["arXiv Agent"],
+                summary="This is a test email to verify that your email configuration is working correctly. If you receive this email, your arXiv daily push setup is successful!",
+                link="https://arxiv.org",
+                pdf_link="https://arxiv.org",
+                published=datetime.now(),
+                categories=["test"],
+                primary_category="test",
+                score=5.0,
+                matched_keywords=["test", "configuration"]
+            )
+        ]
+        
+        # 发送测试邮件
+        email_sent = sender.send_papers_email(
+            test_papers,
+            "",
+            datetime.now().strftime('%Y-%m-%d')
+        )
+        
+        if email_sent:
+            print()
+            print("📧 测试邮件已发送！")
+            print(f"请检查 {', '.join(email_config.get('receiver_emails', []))} 的收件箱")
+            print()
+            print("提示：如果未收到邮件，请检查：")
+            print("  1. 垃圾邮件文件夹")
+            print("  2. 邮箱地址是否正确")
+            print("  3. 发件人是否被拦截")
+        else:
+            print()
+            print("⚠️ 测试邮件发送失败")
+            
         print()
         print("你现在可以运行以下命令开始推送：")
         print("  python arxiv_agent.py")

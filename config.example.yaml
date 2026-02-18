@@ -8,14 +8,36 @@
 
 # 基础配置
 keywords_file: keywords.txt
-max_results_per_query: 50
-max_papers_per_day: 30
-days_back: 7
-output_dir: daily_papers
-history_file: paper_history.json
-min_score_threshold: 1.0
 
+# 每次查询的最大结果数
+max_results_per_query: 50
+
+# 每天推送的最大文章数
+max_papers_per_day: 30
+
+# 搜索最近几天的文章
+days_back: 7
+
+# 输出目录
+output_dir: daily_papers
+
+# 历史记录文件（用于去重）
+history_file: paper_history.json
+
+# 最小相关性得分阈值（文章必须匹配至少一个核心关键词）
+# 建议保持默认值 2.0，确保文章与关键词高度相关
+min_score_threshold: 2.0
+
+# 是否按引用次数排序（默认按相关性排序）
+# 注意：开启此选项会增加运行时间，需要获取引用数据
+sort_by_citations: false
+
+# 是否获取引用次数（即使不按引用排序，也可以获取显示）
+fetch_citations: false
+
+# ============================================
 # 邮件配置
+# ============================================
 email:
   enabled: true
   sender_email: "your_email@qq.com"

@@ -8,8 +8,9 @@
 
 ## 🌟 功能特点
 
-- 🔍 **智能搜索**：根据关键词文件自动搜索相关论文
-- 🎯 **相关性排序**：基于关键词匹配、分类、时效性计算相关性得分
+- 🔍 **智能搜索**：根据关键词文件自动搜索相关论文，**必须匹配核心关键词**才收录
+- 🎯 **双重排序**：支持按 **相关性** 或 **引用次数** 降序排列
+- 📊 **引用数据**：可选获取论文引用次数，优先推送高影响力文章
 - 🗂️ **自动分组**：按主题（产业组织/航运环境）自动分类
 - 🚫 **智能去重**：自动记录已推送文章，避免重复
 - ⏰ **定时推送**：支持每天定时自动运行
@@ -233,7 +234,11 @@ max_papers_per_day: 30
 days_back: 7
 output_dir: daily_papers
 history_file: paper_history.json
-min_score_threshold: 1.0
+min_score_threshold: 2.0  # 文章必须匹配至少一个核心关键词
+
+# 排序配置
+sort_by_citations: false  # 是否按引用次数排序（默认按相关性）
+fetch_citations: false    # 是否获取引用次数（会增加运行时间）
 
 # 邮件配置
 email:
@@ -258,6 +263,8 @@ EMAIL_PASSWORD=your_auth_code
 EMAIL_RECEIVERS=receiver1@qq.com,receiver2@gmail.com
 MAX_PAPERS=30
 DAYS_BACK=7
+MIN_SCORE=2.0
+SORT_BY_CITATIONS=false
 ```
 
 ---
@@ -300,6 +307,12 @@ python arxiv_agent.py --no-email
 
 # 测试邮件配置
 python arxiv_agent.py --test-email
+
+# 按引用次数排序（高引用优先）
+python arxiv_agent.py --sort-by-citations --fetch-citations
+
+# 获取引用次数显示（不排序）
+python arxiv_agent.py --fetch-citations
 
 # 使用自定义配置文件
 python arxiv_agent.py --config my_config.yaml
@@ -357,15 +370,32 @@ python scheduler.py --run-once
 
 ## 🎯 相关性评分机制
 
-| 因素 | 得分 |
-|------|------|
-| 标题关键词匹配 | +3.0 |
-| 摘要关键词匹配 | +1.0 |
-| 经济学/相关分类 | +0.5 |
-| 1天内发布 | +2.0 |
-| 3天内发布 | +1.0 |
+系统通过 **核心关键词** 和 **扩展关键词** 两级体系来筛选文章：
 
-低于 `min_score_threshold` 的文章将被过滤。
+### 关键词分级
+
+- **核心关键词**：`keywords.txt` 中"扩展"之前的关键词，文章**必须匹配至少一个**才会被收录
+- **扩展关键词**：`keywords.txt` 中"扩展"之后的关键词，匹配后额外加分
+
+### 评分规则
+
+| 匹配类型 | 标题匹配 | 摘要匹配 |
+|----------|----------|----------|
+| 核心关键词 | +5.0 | +2.0 |
+| 扩展关键词 | +2.0 | +0.5 |
+| 经济学相关分类 | - | +0.5 |
+| 1天内发布 | - | +2.0 |
+| 3天内发布 | - | +1.0 |
+
+### 过滤机制
+
+- **必须匹配** 至少一个核心关键词，否则直接过滤
+- 低于 `min_score_threshold`（默认 2.0）的文章会被过滤
+
+### 排序方式
+
+- **默认**：按相关性得分降序
+- **可选**：按引用次数降序（需开启 `sort_by_citations`）
 
 ---
 
