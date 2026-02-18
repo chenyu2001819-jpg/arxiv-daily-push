@@ -26,6 +26,14 @@ on:
         required: false
         default: '10'
         type: string
+      reset_history:
+        description: '重置历史记录（会重新抓取所有文章）'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 # 设置权限
 permissions:
@@ -53,20 +61,26 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Load paper history
-      uses: actions/cache@v4
-      with:
-        path: paper_history.json
-        key: paper-history-${{ github.run_id }}
-        restore-keys: |
-          paper-history-
+    - name: Check/Create paper history
+      run: |
+        # 如果文件不存在，创建一个空的
+        if [ ! -f paper_history.json ]; then
+          echo '{"paper_ids": [], "last_update": ""}' > paper_history.json
+          echo "创建了新的 paper_history.json"
+        else
+          echo "paper_history.json 已存在"
+          cat paper_history.json | head -c 200
+          echo "..."
+        fi
     
     - name: Show configuration
       run: |
         echo "配置信息："
         echo "  核心关键词数量: ${{ github.event.inputs.core_limit || '30' }}"
         echo "  扩展关键词数量: ${{ github.event.inputs.extended_limit || '10' }}"
-        echo "  关键词文件内容:"
+        echo "  重置历史: ${{ github.event.inputs.reset_history || 'false' }}"
+        echo ""
+        echo "关键词文件内容:"
         cat keywords.txt | head -50
     
     - name: Test email configuration
@@ -96,8 +110,13 @@ jobs:
         DAYS_BACK: ${{ secrets.DAYS_BACK }}
         CORE_LIMIT: ${{ github.event.inputs.core_limit }}
         EXTENDED_LIMIT: ${{ github.event.inputs.extended_limit }}
+        RESET_HISTORY: ${{ github.event.inputs.reset_history }}
       run: |
         echo "开始运行 arXiv Agent..."
+        if [ "${{ github.event.inputs.reset_history }}" == "true" ]; then
+          echo "重置历史记录..."
+          echo '{"paper_ids": [], "last_update": ""}' > paper_history.json
+        fi
         python arxiv_agent.py 2>&1
         echo "运行完成"
     
@@ -109,12 +128,6 @@ jobs:
         echo ""
         echo "报告文件列表:"
         ls -la daily_papers/*.md 2>/dev/null || echo "没有生成报告文件"
-    
-    - name: Save paper history
-      uses: actions/cache@v4
-      with:
-        path: paper_history.json
-        key: paper-history-${{ github.run_id }}
     
     - name: Upload reports
       if: github.event.inputs.test_email != 'true'
