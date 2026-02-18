@@ -1,0 +1,29 @@
+# ============================================
+# arXiv Agent 配置示例文件
+# ============================================
+# 使用说明：
+# 1. 复制此文件为 config.yaml: cp config.example.yaml config.yaml
+# 2. 编辑 config.yaml，填入你的真实配置
+# 3. 确保 config.yaml 在 .gitignore 中，不要提交到 Git！
+
+# 基础配置
+keywords_file: keywords.txt
+max_results_per_query: 50
+max_papers_per_day: 30
+days_back: 7
+output_dir: daily_papers
+history_file: paper_history.json
+min_score_threshold: 1.0
+
+# 邮件配置
+email:
+  enabled: true
+  sender_email: "your_email@qq.com"
+  sender_password: "your_auth_code_here"
+  receiver_emails:
+    - "receiver@example.com"
+  # SMTP 配置通常无需手动设置，程序会自动检测
+  # smtp_host: "smtp.qq.com"
+  # smtp_port: 465
+  # use_ssl: true
+  # use_tls: false

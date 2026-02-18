@@ -1,0 +1,101 @@
+name: arXiv Daily Paper Push
+
+on:
+  # 定时触发：每天 UTC 01:00（北京时间 09:00）
+  schedule:
+    - cron: '0 1 * * *'
+  
+  # 手动触发
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: '测试邮件配置'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+  # 推送代码时触发（可选，用于测试）
+  # push:
+  #   branches: [ main, master ]
+
+jobs:
+  fetch-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Load paper history
+      uses: actions/cache@v4
+      with:
+        path: paper_history.json
+        key: paper-history-${{ github.run_id }}
+        restore-keys: |
+          paper-history-
+    
+    - name: Test email configuration
+      if: github.event.inputs.test_email == 'true'
+      env:
+        EMAIL_ENABLED: ${{ secrets.EMAIL_ENABLED }}
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        USE_SSL: ${{ secrets.USE_SSL }}
+        USE_TLS: ${{ secrets.USE_TLS }}
+      run: python test_email.py
+    
+    - name: Run arXiv Agent
+      if: github.event.inputs.test_email != 'true'
+      env:
+        EMAIL_ENABLED: ${{ secrets.EMAIL_ENABLED }}
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECEIVERS: ${{ secrets.EMAIL_RECEIVERS }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        USE_SSL: ${{ secrets.USE_SSL }}
+        USE_TLS: ${{ secrets.USE_TLS }}
+        MAX_PAPERS: ${{ secrets.MAX_PAPERS }}
+        DAYS_BACK: ${{ secrets.DAYS_BACK }}
+        MIN_SCORE: ${{ secrets.MIN_SCORE }}
+      run: python arxiv_agent.py
+    
+    - name: Save paper history
+      uses: actions/cache@v4
+      with:
+        path: paper_history.json
+        key: paper-history-${{ github.run_id }}
+    
+    - name: Upload reports
+      if: github.event.inputs.test_email != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-papers-${{ github.run_id }}
+        path: daily_papers/*.md
+        retention-days: 30
+    
+    - name: Commit paper history
+      if: github.event.inputs.test_email != 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add paper_history.json
+        git diff --staged --quiet || (git commit -m "Update paper history [skip ci]" && git push)
+      continue-on-error: true
