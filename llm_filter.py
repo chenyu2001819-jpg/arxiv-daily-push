@@ -69,6 +69,9 @@ class LLMFilter:
             elif 'anthropic.com' in url:
                 # Claude API 格式
                 return self._call_claude(url, prompt)
+            elif 'minimax.chat' in url:
+                # MiniMax API 格式
+                return self._call_minimax(url, prompt)
             else:
                 # OpenAI 兼容格式
                 return self._call_openai_compatible(url, prompt)
@@ -188,6 +191,45 @@ class LLMFilter:
             return result['content'][0].get('text', '')
         
         logger.warning(f"无法解析 Claude 响应: {result}")
+        return ''
+    
+    def _call_minimax(self, url: str, prompt: str) -> str:
+        """调用 MiniMax API"""
+        # MiniMax 使用特殊的 header 格式
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.config.api_key}'
+        }
+        
+        payload = {
+            'model': self.config.model,
+            'messages': [
+                {'role': 'system', 'content': '你是一个学术论文分析专家，擅长判断论文与特定研究领域的相关性。'},
+                {'role': 'user', 'content': prompt}
+            ],
+            'temperature': self.config.temperature,
+            'max_tokens': self.config.max_tokens
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # 检查错误
+        if result.get('base_resp') and result['base_resp'].get('status_code') != 0:
+            logger.error(f"MiniMax API 错误: {result['base_resp']}")
+            return ''
+        
+        # 解析 MiniMax 响应格式
+        if 'choices' in result and result['choices']:
+            choice = result['choices'][0]
+            if 'message' in choice:
+                return choice['message'].get('content', '')
+            elif 'text' in choice:
+                return choice['text']
+        
+        logger.warning(f"无法解析 MiniMax 响应: {result}")
         return ''
     
     def evaluate_relevance(self, paper_title: str, paper_summary: str, keywords: List[str]) -> Tuple[float, str]:
