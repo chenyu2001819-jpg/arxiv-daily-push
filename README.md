@@ -279,6 +279,8 @@ LLM_MODEL=gpt-3.5-turbo
 LLM_API_URL=openai
 LLM_MIN_SCORE=5.0
 LLM_TOP_N=30
+LLM_DELAY=2.0           # 请求间隔（秒），Gemini 建议 2 秒以上
+LLM_MAX_RETRIES=3       # 失败重试次数
 ```
 
 **其他可选配置：**

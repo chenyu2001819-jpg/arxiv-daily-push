@@ -38,8 +38,10 @@ class LLMFilter:
         'minimax': 'https://api.minimax.chat/v1/text/chatcompletion_v2',
     }
     
-    def __init__(self, config: LLMConfig):
+    def __init__(self, config: LLMConfig, delay: float = 2.0, max_retries: int = 3):
         self.config = config
+        self.delay = delay  # 请求之间的延迟（秒）
+        self.max_retries = max_retries  # 最大重试次数
         self.session = requests.Session()
         self.session.headers.update({
             'Authorization': f'Bearer {config.api_key}',
@@ -314,18 +316,35 @@ class LLMFilter:
         Returns:
             筛选后的论文列表
         """
+        import time
+        import random
+        
         logger.info(f"开始使用 LLM 筛选 {len(papers)} 篇论文...")
+        logger.info(f"请求延迟: {self.delay}秒, 最大重试次数: {self.max_retries}")
         
         scored_papers = []
         
         for i, paper in enumerate(papers):
             logger.info(f"  评估第 {i+1}/{len(papers)} 篇: {paper.title[:50]}...")
             
-            score, reason = self.evaluate_relevance(
-                paper.title, 
-                paper.summary, 
-                keywords
-            )
+            # 带重试的评估
+            score, reason = 0.0, "评估失败"
+            for attempt in range(self.max_retries):
+                try:
+                    score, reason = self.evaluate_relevance(
+                        paper.title, 
+                        paper.summary, 
+                        keywords
+                    )
+                    if score > 0:  # 成功获取到分数
+                        break
+                except Exception as e:
+                    logger.warning(f"    第 {attempt + 1} 次尝试失败: {e}")
+                    if attempt < self.max_retries - 1:
+                        # 指数退避: 2, 4, 8 秒
+                        retry_delay = (2 ** attempt) + random.uniform(0, 1)
+                        logger.info(f"    等待 {retry_delay:.1f} 秒后重试...")
+                        time.sleep(retry_delay)
             
             # 将分数添加到论文对象
             paper.llm_score = score
@@ -336,9 +355,9 @@ class LLMFilter:
             if score >= min_score:
                 scored_papers.append((score, paper))
             
-            # 礼貌性延迟，避免 API 限制
-            import time
-            time.sleep(0.5)
+            # 延迟，避免 API 限制（Gemini 建议至少 1-2 秒）
+            if i < len(papers) - 1:  # 最后一篇不需要延迟
+                time.sleep(self.delay)
         
         # 按分数排序
         scored_papers.sort(key=lambda x: -x[0])

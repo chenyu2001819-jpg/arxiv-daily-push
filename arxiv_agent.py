@@ -403,8 +403,11 @@ class ArxivAgent:
                     temperature=self.config['llm'].get('temperature', 0.3),
                     max_tokens=self.config['llm'].get('max_tokens', 1000)
                 )
-                self.llm_filter = LLMFilter(llm_config)
-                logger.info(f"✅ LLM 筛选功能已启用 (模型: {llm_config.model})")
+                # 获取延迟和重试配置（Gemini 建议延迟至少 2 秒）
+                delay = self.config['llm'].get('delay', 2.0)
+                max_retries = self.config['llm'].get('max_retries', 3)
+                self.llm_filter = LLMFilter(llm_config, delay=delay, max_retries=max_retries)
+                logger.info(f"✅ LLM 筛选功能已启用 (模型: {llm_config.model}, 延迟: {delay}s)")
             except Exception as e:
                 logger.error(f"LLM 筛选器初始化失败: {e}")
         
