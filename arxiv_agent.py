@@ -74,12 +74,13 @@ class KeywordManager:
         self.keywords_file = keywords_file
         self.keywords = []
         self.keyword_groups = {}
-        self.core_keywords = []  # 核心关键词（必须匹配至少一个）
-        self.extended_keywords = []  # 扩展关键词（加分项）
+        self.core_keywords = []  # 核心关键词
+        self.extended_keywords = []  # 扩展关键词
+        self.search_queries = []  # 搜索查询词
         self._load_keywords()
     
     def _load_keywords(self):
-        """从文件加载关键词，支持分组和核心/扩展区分"""
+        """从文件加载关键词"""
         if not os.path.exists(self.keywords_file):
             raise FileNotFoundError(f"关键词文件不存在: {self.keywords_file}")
         
@@ -96,7 +97,7 @@ class KeywordManager:
                 continue
             
             # 检测分组标题
-            if line.endswith('关键词') or '扩展' in line.lower():
+            if '关键词' in line or '扩展' in line.lower():
                 current_group = line
                 self.keyword_groups[current_group] = []
                 if '扩展' in line.lower():
@@ -106,7 +107,7 @@ class KeywordManager:
             # 处理一行多个关键词的情况
             sub_keywords = re.split(r'[\s、,，]+', line)
             for kw in sub_keywords:
-                kw = kw.strip().lower()
+                kw = kw.strip()
                 if kw and len(kw) > 1:
                     self.keywords.append(kw)
                     self.keyword_groups[current_group].append(kw)
@@ -122,89 +123,130 @@ class KeywordManager:
         self.core_keywords = list(set(self.core_keywords))
         self.extended_keywords = list(set(self.extended_keywords))
         
+        # 生成搜索查询
+        self._generate_search_queries()
+        
         logger.info(f"加载了 {len(self.keywords)} 个关键词")
         logger.info(f"  - 核心关键词: {len(self.core_keywords)} 个")
         logger.info(f"  - 扩展关键词: {len(self.extended_keywords)} 个")
+        logger.info(f"  - 搜索查询: {len(self.search_queries)} 个")
     
-    def get_search_queries(self) -> List[str]:
+    def _generate_search_queries(self):
         """生成 arXiv 搜索查询词"""
+        # 关键词翻译映射
         translations = {
             # 产业组织
             '空调市场': 'air conditioner market',
+            'air conditioner market': 'air conditioner market',
             '电动汽车市场': 'electric vehicle market',
             '电车市场': 'EV market',
             '耐用消费品': 'durable goods',
             '实证产业组织': 'empirical industrial organization',
             '实证 io': 'empirical IO',
-            '实证产业组织学': 'empirical industrial organization',
             '市场结构': 'market structure',
             '产品差异化': 'product differentiation',
             '需求估计': 'demand estimation',
-            '需求估计模型': 'demand estimation',
             '供给行为': 'supply behavior',
             '定价策略': 'pricing strategy',
             '市场势力': 'market power',
             '福利分析': 'welfare analysis',
             '家电市场': 'appliance market',
-            '家用电器市场': 'home appliance market',
             '新能源汽车市场': 'new energy vehicle market',
             '离散选择模型': 'discrete choice model',
             'blp 模型': 'BLP model',
-            'blp': 'BLP',
             '结构估计': 'structural estimation',
-            '结构式估计': 'structural estimation',
             '寡头竞争': 'oligopoly competition',
-            '寡头垄断': 'oligopoly',
             '纵向关系': 'vertical relationship',
             '技术创新': 'technological innovation',
-            '技术变革': 'technological change',
             '政策评估': 'policy evaluation',
-            '政策评价': 'policy evaluation',
             '消费行为': 'consumer behavior',
-            '消费者行为': 'consumer behavior',
             # 航运相关
-            '北极航道': 'Arctic shipping route',
-            '北极航线': 'Arctic shipping route',
+            '北极航道': 'Arctic shipping',
             '北极航运': 'Arctic shipping',
             '全球航运贸易': 'global shipping trade',
-            '全球海运贸易': 'global maritime trade',
             '海运碳排放': 'maritime carbon emission',
-            '海洋碳排放': 'maritime carbon emission',
             '航运减排': 'shipping emission reduction',
             '船舶碳排放': 'vessel carbon emission',
-            '船舶排放': 'vessel emission',
             '碳减排政策': 'carbon reduction policy',
-            '碳排放政策': 'carbon emission policy',
             '航运碳足迹': 'shipping carbon footprint',
             '绿色航运': 'green shipping',
             '气候影响': 'climate impact',
-            '气候变化影响': 'climate impact',
             '国际海运': 'international shipping',
-            '国际航运': 'international shipping',
             '海运贸易格局': 'maritime trade pattern',
-            '航运贸易': 'shipping trade',
             '碳税': 'carbon tax',
             '碳市场': 'carbon market',
-            '碳交易市场': 'carbon market',
             '船舶能效': 'ship energy efficiency',
-            '船舶能源效率': 'ship energy efficiency',
             '低碳航运': 'low carbon shipping',
-            '低碳海运': 'low carbon shipping',
             '北极环境影响': 'Arctic environmental impact',
             '贸易路线优化': 'trade route optimization',
-            '航线优化': 'route optimization',
             '可持续航运': 'sustainable shipping',
-            '可持续海运': 'sustainable maritime',
         }
         
-        queries = []
-        for kw in self.keywords:
-            if kw in translations:
-                queries.append(translations[kw])
-            elif kw.isascii():
-                queries.append(kw)
+        queries = set()
+        all_keywords = self.core_keywords + self.extended_keywords
         
-        return list(set(queries))
+        for kw in all_keywords:
+            kw_lower = kw.lower()
+            # 直接使用英文关键词
+            if kw_lower.isascii():
+                queries.add(kw_lower)
+            # 使用翻译后的英文
+            elif kw in translations:
+                queries.add(translations[kw])
+        
+        self.search_queries = list(queries)
+        
+        # 如果没有有效的搜索词，使用默认搜索
+        if not self.search_queries:
+            logger.warning("没有找到有效的英文搜索词，使用默认搜索")
+            self.search_queries = [
+                'industrial organization',
+                'market structure',
+                'shipping',
+                'carbon emission'
+            ]
+    
+    def get_search_queries(self) -> List[str]:
+        """获取搜索查询词"""
+        return self.search_queries
+    
+    def calculate_match_score(self, title: str, summary: str) -> Tuple[float, List[str]]:
+        """
+        计算文章与关键词的匹配得分
+        
+        返回: (得分, 匹配的关键词列表)
+        """
+        text = (title + " " + summary).lower()
+        title_lower = title.lower()
+        score = 0.0
+        matched = []
+        
+        # 核心关键词匹配（权重更高）
+        for kw in self.core_keywords:
+            kw_lower = kw.lower()
+            # 检查英文形式
+            if kw_lower in text:
+                matched.append(kw)
+                if kw_lower in title_lower:
+                    score += 5.0
+                else:
+                    score += 2.0
+            # 检查是否为英文单词（更宽松的匹配）
+            elif kw_lower.replace(' ', '') in text.replace(' ', ''):
+                matched.append(kw)
+                score += 1.0
+        
+        # 扩展关键词匹配
+        for kw in self.extended_keywords:
+            kw_lower = kw.lower()
+            if kw_lower in text and kw not in matched:
+                matched.append(kw)
+                if kw_lower in title_lower:
+                    score += 2.0
+                else:
+                    score += 0.5
+        
+        return score, matched
 
 
 class CitationFetcher:
@@ -216,24 +258,13 @@ class CitationFetcher:
         self.timeout = timeout
     
     def get_citation_count(self, arxiv_id: str) -> int:
-        """
-        获取论文的引用次数
-        
-        Args:
-            arxiv_id: arXiv ID (如 2401.12345)
-            
-        Returns:
-            引用次数，获取失败返回 0
-        """
+        """获取论文的引用次数"""
         if not arxiv_id:
             return 0
         
         try:
-            # Semantic Scholar API 支持通过 arXiv ID 查询
             url = f"{self.API_URL}arXiv:{arxiv_id}"
-            params = {
-                'fields': 'citationCount'
-            }
+            params = {'fields': 'citationCount'}
             
             response = requests.get(url, params=params, timeout=self.timeout)
             
@@ -242,30 +273,20 @@ class CitationFetcher:
                 count = data.get('citationCount', 0)
                 return count if count else 0
             else:
-                logger.debug(f"获取引用次数失败 {arxiv_id}: HTTP {response.status_code}")
                 return 0
                 
         except Exception as e:
-            logger.debug(f"获取引用次数异常 {arxiv_id}: {e}")
             return 0
     
-    def batch_get_citations(self, papers: List[Paper], max_workers: int = 5) -> None:
-        """
-        批量获取引用次数
-        
-        Args:
-            papers: 论文列表
-            max_workers: 最大并发数（避免请求过快）
-        """
+    def batch_get_citations(self, papers: List[Paper]) -> None:
+        """批量获取引用次数"""
         logger.info(f"正在获取 {len(papers)} 篇论文的引用次数...")
         
-        # 为了礼貌性请求，使用顺序获取而不是并发
         for i, paper in enumerate(papers):
             if paper.arxiv_id:
                 paper.citation_count = self.get_citation_count(paper.arxiv_id)
                 if (i + 1) % 10 == 0:
                     logger.info(f"  已处理 {i + 1}/{len(papers)} 篇")
-                # 添加延迟避免请求过快
                 import time
                 time.sleep(0.5)
         
@@ -281,13 +302,7 @@ class ArxivSearcher:
         self.max_results_per_query = max_results_per_query
     
     def search(self, query: str, days_back: int = 7) -> List[Paper]:
-        """
-        搜索 arXiv 文章
-        
-        Args:
-            query: 搜索关键词
-            days_back: 搜索最近几天的文章
-        """
+        """搜索 arXiv 文章"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         
@@ -357,68 +372,12 @@ class ArxivSearcher:
 
 
 class PaperRanker:
-    """文章排序器 - 基于相关性和引用次数"""
+    """文章排序器"""
     
     CAT_PREFIXES = ['econ.', 'q-fin.', 'stat.', 'cs.']
     
     def __init__(self, keyword_manager: KeywordManager):
         self.keyword_manager = keyword_manager
-    
-    def calculate_score(self, paper: Paper) -> Tuple[float, List[str]]:
-        """
-        计算文章相关性得分
-        
-        评分规则：
-        1. 必须匹配至少一个核心关键词（否则得分为0，会被过滤）
-        2. 核心关键词匹配得分高
-        3. 扩展关键词匹配额外加分
-        4. 分类相关性
-        5. 时效性
-        """
-        score = 0.0
-        matched_keywords = []
-        text = f"{paper.title} {paper.summary}".lower()
-        title_lower = paper.title.lower()
-        
-        # 1. 核心关键词匹配（必须至少匹配一个）
-        has_core_match = False
-        for kw in self.keyword_manager.core_keywords:
-            if kw in text:
-                has_core_match = True
-                if kw in title_lower:
-                    score += 5.0  # 标题匹配权重很高
-                else:
-                    score += 2.0  # 摘要匹配
-                matched_keywords.append(kw)
-        
-        # 如果没有匹配核心关键词，返回0分（将被过滤）
-        if not has_core_match:
-            return 0.0, []
-        
-        # 2. 扩展关键词匹配（额外加分）
-        for kw in self.keyword_manager.extended_keywords:
-            if kw in text and kw not in matched_keywords:
-                if kw in title_lower:
-                    score += 2.0
-                else:
-                    score += 0.5
-                matched_keywords.append(kw)
-        
-        # 3. 分类相关性得分
-        for cat in paper.categories:
-            for prefix in self.CAT_PREFIXES:
-                if cat.startswith(prefix):
-                    score += 0.5
-                    break
-        
-        # 4. 时效性得分
-        days_since_published = (datetime.now() - paper.published).days
-        if days_since_published <= 1:
-            score += 2.0
-        elif days_since_published <= 3:
-            score += 1.0
-        
-        return score, matched_keywords
     
     def rank_papers(self, papers: List[Paper], sort_by_citations: bool = False) -> List[Paper]:
         """
@@ -430,23 +389,37 @@ class PaperRanker:
         """
         # 计算相关性得分
         for paper in papers:
-            paper.score, paper.matched_keywords = self.calculate_score(paper)
+            score, matched = self.keyword_manager.calculate_match_score(
+                paper.title, paper.summary
+            )
+            paper.score = score
+            paper.matched_keywords = matched
+            
+            # 分类相关性加分
+            for cat in paper.categories:
+                for prefix in self.CAT_PREFIXES:
+                    if cat.startswith(prefix):
+                        paper.score += 0.5
+                        break
+            
+            # 时效性加分
+            days_since = (datetime.now() - paper.published).days
+            if days_since <= 1:
+                paper.score += 2.0
+            elif days_since <= 3:
+                paper.score += 1.0
         
-        # 过滤掉没有核心关键词匹配的文章
-        papers = [p for p in papers if p.score > 0]
-        
+        # 排序
         if sort_by_citations:
-            # 按引用次数降序，引用次数相同则按相关性
             papers.sort(key=lambda p: (-p.citation_count, -p.score))
         else:
-            # 按相关性得分降序
             papers.sort(key=lambda p: -p.score)
         
         return papers
 
 
 def load_config_from_env() -> Dict:
-    """从环境变量加载配置（用于 GitHub Actions）"""
+    """从环境变量加载配置"""
     config = {}
     
     email_enabled = os.environ.get('EMAIL_ENABLED', '').lower()
@@ -513,12 +486,10 @@ class ArxivAgent:
             'days_back': 7,
             'output_dir': 'daily_papers',
             'history_file': 'paper_history.json',
-            'min_score_threshold': 2.0,  # 提高阈值，确保核心关键词匹配
-            'sort_by_citations': False,  # 默认不按引用排序
-            'fetch_citations': False,    # 默认不获取引用（节省API调用）
-            'email': {
-                'enabled': False
-            }
+            'min_score_threshold': 1.0,  # 默认阈值较低，确保有文章
+            'sort_by_citations': False,
+            'fetch_citations': False,
+            'email': {'enabled': False}
         }
         
         # 加载 YAML 配置
@@ -528,7 +499,7 @@ class ArxivAgent:
                 if yaml_config:
                     default_config.update(yaml_config)
         
-        # 加载环境变量配置（优先级更高）
+        # 加载环境变量配置
         env_config = load_config_from_env()
         if env_config:
             logger.info("从环境变量加载配置")
@@ -563,22 +534,14 @@ class ArxivAgent:
         return paper.title[:50]
     
     def run(self, send_email: bool = True) -> str:
-        """
-        执行每日文章抓取和推送
-        
-        Args:
-            send_email: 是否发送邮件推送
-            
-        Returns:
-            生成的报告文件路径
-        """
+        """执行每日文章抓取和推送"""
         logger.info("=" * 60)
         logger.info("开始执行 arXiv 文章推送任务")
         logger.info("=" * 60)
         
         # 1. 获取所有搜索词
         queries = self.keyword_manager.get_search_queries()
-        logger.info(f"搜索关键词: {queries}")
+        logger.info(f"搜索查询: {queries}")
         
         # 2. 搜索文章
         all_papers: Dict[str, Paper] = {}
@@ -596,6 +559,10 @@ class ArxivAgent:
         
         logger.info(f"共找到 {len(all_papers)} 篇不重复文章")
         
+        if not all_papers:
+            logger.warning("没有找到任何文章，请检查关键词配置")
+            return ""
+        
         # 3. 过滤已推送的文章
         new_papers = []
         for paper_id, paper in all_papers.items():
@@ -605,32 +572,43 @@ class ArxivAgent:
         
         logger.info(f"其中 {len(new_papers)} 篇是新文章")
         
-        # 4. 计算相关性并过滤
-        ranked_papers = self.ranker.rank_papers(new_papers)
-        logger.info(f"匹配核心关键词的文章: {len(ranked_papers)} 篇")
+        if not new_papers:
+            logger.info("没有新文章需要推送")
+            return ""
+        
+        # 4. 排序
+        sort_by_citations = self.config.get('sort_by_citations', False)
+        ranked_papers = self.ranker.rank_papers(new_papers, sort_by_citations)
         
         # 5. 应用阈值过滤
-        min_score = self.config.get('min_score_threshold', 2.0)
+        min_score = self.config.get('min_score_threshold', 1.0)
         filtered_papers = [p for p in ranked_papers if p.score >= min_score]
-        logger.info(f"通过相关性阈值({min_score})的文章: {len(filtered_papers)} 篇")
         
-        # 6. 获取引用次数（如果启用）
-        sort_by_citations = self.config.get('sort_by_citations', False)
+        logger.info(f"匹配关键词的文章: {len(ranked_papers)} 篇")
+        logger.info(f"通过阈值({min_score})的文章: {len(filtered_papers)} 篇")
+        
+        if not filtered_papers:
+            logger.warning(f"没有文章通过相关性阈值({min_score})，尝试显示得分最高的几篇")
+            # 如果没有通过阈值的文章，显示得分最高的前5篇
+            filtered_papers = ranked_papers[:5]
+        
+        # 6. 获取引用次数
         fetch_citations = self.config.get('fetch_citations', False) or sort_by_citations
-        
         if fetch_citations and filtered_papers:
             self.citation_fetcher.batch_get_citations(filtered_papers)
             
-            # 如果需要按引用排序，重新排序
             if sort_by_citations:
                 filtered_papers.sort(key=lambda p: (-p.citation_count, -p.score))
-                logger.info("已按引用次数排序")
         
         # 7. 限制数量
         max_papers = self.config.get('max_papers_per_day', 30)
         selected_papers = filtered_papers[:max_papers]
         
         logger.info(f"最终选择 {len(selected_papers)} 篇文章")
+        
+        # 打印选中的文章
+        for i, paper in enumerate(selected_papers, 1):
+            logger.info(f"  {i}. {paper.title[:60]}... (得分: {paper.score:.1f})")
         
         # 8. 生成报告
         output_path = self._generate_report(selected_papers)
@@ -648,16 +626,22 @@ class ArxivAgent:
             else:
                 logger.error("📧 邮件推送失败，请检查配置")
         elif not self.email_sender and self.config.get('email', {}).get('enabled'):
-            logger.warning("邮件功能已启用但发送器未初始化，请检查依赖安装")
+            logger.warning("邮件功能已启用但发送器未初始化")
+        elif not selected_papers:
+            logger.warning("没有选中的文章，跳过邮件发送")
         
         # 10. 保存历史
         self._save_history()
         
-        logger.info(f"任务完成！报告已保存: {output_path}")
+        if output_path:
+            logger.info(f"任务完成！报告已保存: {output_path}")
         return output_path
     
     def _generate_report(self, papers: List[Paper]) -> str:
         """生成 Markdown 报告"""
+        if not papers:
+            return ""
+        
         output_dir = self.config.get('output_dir', 'daily_papers')
         os.makedirs(output_dir, exist_ok=True)
         
@@ -674,9 +658,9 @@ class ArxivAgent:
         
         for paper in papers:
             matched_text = ' '.join(paper.matched_keywords).lower()
-            if any(kw in matched_text for kw in ['航运', '碳', 'ship', 'carbon', 'arctic', 'maritime', 'green']):
+            if any(kw in matched_text for kw in ['航运', '碳', 'ship', 'carbon', 'arctic', 'maritime']):
                 groups['航运与环境'].append(paper)
-            elif any(kw in matched_text for kw in ['市场', '产业', '竞争', '定价', 'market', 'industr', 'competition', '需求', '供给']):
+            elif any(kw in matched_text for kw in ['市场', '产业', '定价', 'market', 'industr']):
                 groups['产业组织与市场'].append(paper)
             else:
                 groups['其他相关文章'].append(paper)
@@ -686,7 +670,6 @@ class ArxivAgent:
             f.write(f"# 📚 arXiv 每日文章推送 ({today})\n\n")
             f.write(f"> 共筛选出 **{len(papers)}** 篇相关文章\n\n")
             
-            # 添加排序说明
             if self.config.get('sort_by_citations', False):
                 f.write("> 📊 按 **引用次数** 降序排列\n\n")
             else:
@@ -710,25 +693,23 @@ class ArxivAgent:
                     f.write(f"- **分类**: {', '.join(paper.categories[:3])}\n")
                     f.write(f"- **相关性得分**: {paper.score:.1f}\n")
                     
-                    # 显示引用次数
                     if paper.citation_count > 0:
                         f.write(f"- **被引次数**: {paper.citation_count}\n")
                     
                     if paper.matched_keywords:
                         f.write(f"- **匹配关键词**: {', '.join(paper.matched_keywords[:5])}\n")
+                    
                     f.write(f"- **链接**: [arXiv]({paper.link})")
                     if paper.pdf_link:
                         f.write(f" | [PDF]({paper.pdf_link})")
                     f.write("\n\n")
                     
-                    # 摘要
                     summary = paper.summary[:800]
                     if len(paper.summary) > 800:
                         summary += "..."
                     f.write(f"> **摘要**: {summary}\n\n")
                     f.write("---\n\n")
             
-            # 页脚
             f.write("\n*由 arXiv Agent 自动生成*\n")
         
         return filepath
@@ -736,7 +717,7 @@ class ArxivAgent:
     def test_email(self) -> bool:
         """测试邮件配置"""
         if not self.email_sender:
-            logger.error("邮件发送器未初始化，请检查 config.yaml 中的 email 配置")
+            logger.error("邮件发送器未初始化")
             return False
         return self.email_sender.test_connection()
 
@@ -744,37 +725,16 @@ class ArxivAgent:
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description='arXiv 每日文章推送智能体')
-    parser.add_argument(
-        '--no-email',
-        action='store_true',
-        help='不发送邮件推送（仅生成本地报告）'
-    )
-    parser.add_argument(
-        '--test-email',
-        action='store_true',
-        help='测试邮件配置'
-    )
-    parser.add_argument(
-        '--config',
-        default='config.yaml',
-        help='配置文件路径（默认: config.yaml）'
-    )
-    parser.add_argument(
-        '--sort-by-citations',
-        action='store_true',
-        help='按引用次数排序'
-    )
-    parser.add_argument(
-        '--fetch-citations',
-        action='store_true',
-        help='获取引用次数（会增加运行时间）'
-    )
+    parser.add_argument('--no-email', action='store_true', help='不发送邮件')
+    parser.add_argument('--test-email', action='store_true', help='测试邮件配置')
+    parser.add_argument('--config', default='config.yaml', help='配置文件路径')
+    parser.add_argument('--sort-by-citations', action='store_true', help='按引用排序')
+    parser.add_argument('--fetch-citations', action='store_true', help='获取引用次数')
     
     args = parser.parse_args()
     
     agent = ArxivAgent(config_file=args.config)
     
-    # 命令行参数覆盖配置
     if args.sort_by_citations:
         agent.config['sort_by_citations'] = True
     if args.fetch_citations:
@@ -785,10 +745,15 @@ def main():
         exit(0 if success else 1)
     
     report_path = agent.run(send_email=not args.no_email)
-    print(f"\n✅ 报告已生成: {report_path}")
+    
+    if report_path:
+        print(f"\n✅ 报告已生成: {report_path}")
+    else:
+        print("\n⚠️ 未生成报告")
     
     if agent.email_sender and not args.no_email:
-        print("📧 邮件已发送至:", ', '.join(agent.config.get('email', {}).get('receiver_emails', [])))
+        receivers = agent.config.get('email', {}).get('receiver_emails', [])
+        print(f"📧 收件人: {', '.join(receivers)}")
 
 
 if __name__ == "__main__":
