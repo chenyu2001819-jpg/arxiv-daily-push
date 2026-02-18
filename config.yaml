@@ -33,7 +33,7 @@ min_score_threshold: 1.0
 
 email:
   # 是否启用邮件推送
-  enabled: false
+  enabled: true
   
   # 发件人邮箱
   sender_email: "your_email@example.com"
