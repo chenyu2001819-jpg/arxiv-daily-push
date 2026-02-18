@@ -48,6 +48,30 @@ jobs:
         restore-keys: |
           paper-history-
     
+    - name: Debug Secrets (masked)
+      run: |
+        echo "Checking if secrets are set..."
+        if [ -n "${{ secrets.EMAIL_ENABLED }}" ]; then
+          echo "✓ EMAIL_ENABLED is set"
+        else
+          echo "✗ EMAIL_ENABLED is NOT set"
+        fi
+        if [ -n "${{ secrets.EMAIL_SENDER }}" ]; then
+          echo "✓ EMAIL_SENDER is set"
+        else
+          echo "✗ EMAIL_SENDER is NOT set"
+        fi
+        if [ -n "${{ secrets.EMAIL_PASSWORD }}" ]; then
+          echo "✓ EMAIL_PASSWORD is set"
+        else
+          echo "✗ EMAIL_PASSWORD is NOT set"
+        fi
+        if [ -n "${{ secrets.EMAIL_RECEIVERS }}" ]; then
+          echo "✓ EMAIL_RECEIVERS is set"
+        else
+          echo "✗ EMAIL_RECEIVERS is NOT set"
+        fi
+    
     - name: Test email configuration
       if: github.event.inputs.test_email == 'true'
       env:
