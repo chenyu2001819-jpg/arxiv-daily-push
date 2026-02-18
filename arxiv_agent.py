@@ -28,6 +28,13 @@ try:
 except ImportError:
     EMAIL_AVAILABLE = False
 
+# 导入 LLM 筛选模块
+try:
+    from llm_filter import LLMFilter, LLMConfig, load_llm_config_from_env
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
@@ -385,6 +392,22 @@ class ArxivAgent:
             except Exception as e:
                 logger.error(f"邮件发送器初始化失败: {e}")
         
+        # LLM 筛选器
+        self.llm_filter: Optional[LLMFilter] = None
+        if LLM_AVAILABLE and self.config.get('llm', {}).get('enabled', False):
+            try:
+                llm_config = LLMConfig(
+                    api_key=self.config['llm']['api_key'],
+                    model=self.config['llm']['model'],
+                    api_url=self.config['llm'].get('api_url', 'openai'),
+                    temperature=self.config['llm'].get('temperature', 0.3),
+                    max_tokens=self.config['llm'].get('max_tokens', 1000)
+                )
+                self.llm_filter = LLMFilter(llm_config)
+                logger.info(f"✅ LLM 筛选功能已启用 (模型: {llm_config.model})")
+            except Exception as e:
+                logger.error(f"LLM 筛选器初始化失败: {e}")
+        
         # 去重存储
         self.seen_ids: Set[str] = set()
         self.history_file = self.config.get('history_file', 'paper_history.json')
@@ -445,6 +468,18 @@ class ArxivAgent:
             block_config['extended_limit'] = int(os.environ['EXTENDED_LIMIT'])
         if block_config:
             config['block_config'] = block_config
+        
+        # LLM 配置
+        llm_api_key = os.environ.get('LLM_API_KEY', '')
+        if llm_api_key:
+            config['llm'] = {
+                'enabled': True,
+                'api_key': llm_api_key,
+                'model': os.environ.get('LLM_MODEL', 'gpt-3.5-turbo'),
+                'api_url': os.environ.get('LLM_API_URL', 'openai'),
+                'min_score': float(os.environ.get('LLM_MIN_SCORE', '5.0')),
+                'top_n': int(os.environ.get('LLM_TOP_N', '30')) if os.environ.get('LLM_TOP_N') else None
+            }
         
         return config
     
@@ -609,11 +644,40 @@ class ArxivAgent:
         # 按主题和引用次数排序
         all_selected_papers.sort(key=lambda p: (p.source_block, -p.citation_count))
         
+        # 如果使用 LLM 筛选，进行二次过滤
+        if self.llm_filter and len(all_selected_papers) > 0:
+            logger.info(f"\n{'='*60}")
+            logger.info("开始使用 LLM 进行相关性筛选...")
+            logger.info(f"{'='*60}")
+            
+            # 获取所有关键词
+            all_keywords = []
+            for block in self.keyword_manager.blocks:
+                all_keywords.extend(block.all_keywords)
+            
+            llm_config = self.config.get('llm', {})
+            min_score = llm_config.get('min_score', 5.0)
+            top_n = llm_config.get('top_n')
+            
+            logger.info(f"LLM 筛选配置: 最低分数={min_score}, 最多选取={top_n or '不限'}")
+            
+            all_selected_papers = self.llm_filter.filter_papers(
+                all_selected_papers,
+                all_keywords,
+                min_score=min_score,
+                top_n=top_n
+            )
+            
+            logger.info(f"LLM 筛选后剩余 {len(all_selected_papers)} 篇文章")
+        
         # 打印最终选中的文章
         logger.info("\n最终选中的文章列表:")
         for i, paper in enumerate(all_selected_papers, 1):
+            llm_info = ""
+            if hasattr(paper, 'llm_score'):
+                llm_info = f" [LLM:{paper.llm_score:.1f}]"
             logger.info(f"{i}. [{paper.source_block}/{paper.keyword_type}] "
-                       f"{paper.title[:50]}... (引用:{paper.citation_count})")
+                       f"{paper.title[:50]}... (引用:{paper.citation_count}){llm_info}")
         
         # 生成报告
         output_path = self._generate_report(all_selected_papers)
@@ -653,10 +717,18 @@ class ArxivAgent:
         for paper in papers:
             block_groups[paper.source_block].append(paper)
         
+        # 检查是否有 LLM 评分
+        has_llm_score = any(hasattr(p, 'llm_score') for p in papers)
+        
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(f"# 📚 arXiv 每日文章推送 ({today})\n\n")
             f.write(f"> 共筛选出 **{len(papers)}** 篇相关文章\n\n")
-            f.write("> 📊 按 **引用次数** 降序排列\n\n")
+            
+            if has_llm_score:
+                f.write("> 🤖 经 **LLM 智能筛选**，按相关性降序排列\n\n")
+            else:
+                f.write("> 📊 按 **引用次数** 降序排列\n\n")
+            
             f.write("---\n\n")
             
             # 汇总统计
@@ -699,6 +771,13 @@ class ArxivAgent:
             f.write(f"- **发布时间**: {paper.published.strftime('%Y-%m-%d')}\n")
             f.write(f"- **分类**: {paper.primary_category}\n")
             f.write(f"- **被引次数**: {paper.citation_count}\n")
+            
+            # 显示 LLM 评分
+            if hasattr(paper, 'llm_score'):
+                f.write(f"- **🤖 LLM 相关性评分**: {paper.llm_score:.1f}/10\n")
+                if hasattr(paper, 'llm_reason') and paper.llm_reason:
+                    f.write(f"- **LLM 评估**: {paper.llm_reason[:100]}...\n")
+            
             if paper.matched_keywords:
                 f.write(f"- **匹配关键词**: {', '.join(paper.matched_keywords[:5])}\n")
             f.write(f"- **链接**: [arXiv]({paper.link})")

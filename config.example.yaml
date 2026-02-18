@@ -8,7 +8,7 @@
 keywords_file: keywords.txt
 
 # 搜索最近几天的文章
-days_back: 30
+days_back: 3
 
 # 每次查询的最大结果数
 max_results_per_query: 100
@@ -25,6 +25,18 @@ history_file: paper_history.json
 block_config:
   core_limit: 30       # 每块核心关键词取前N篇（按引用次数）
   extended_limit: 10   # 每块扩展关键词取前N篇（按引用次数）
+
+# ============================================
+# LLM 智能筛选配置（可选）
+# ============================================
+# 使用大模型判断论文与关键词的相关性，过滤不相关文章
+llm:
+  enabled: false
+  api_key: "your-llm-api-key"
+  model: "gpt-3.5-turbo"  # 或其他模型，如：deepseek-chat, moonshot-v1-8k
+  api_url: "openai"       # API 地址，可选：openai, deepseek, moonshot, 或自定义URL
+  min_score: 5.0          # 最低相关性分数（0-10），低于此分数的文章会被过滤
+  top_n: 30               # 最多选取前N篇（按LLM评分排序），不设置则不过滤数量
 
 # ============================================
 # 邮件配置

@@ -79,6 +79,7 @@ jobs:
         echo "  核心关键词数量: ${{ github.event.inputs.core_limit || '30' }}"
         echo "  扩展关键词数量: ${{ github.event.inputs.extended_limit || '10' }}"
         echo "  重置历史: ${{ github.event.inputs.reset_history || 'false' }}"
+        echo "  LLM 筛选: ${{ secrets.LLM_API_KEY != '' && '已启用' || '未启用' }}"
         echo ""
         echo "关键词文件内容:"
         cat keywords.txt | head -50
@@ -111,6 +112,12 @@ jobs:
         CORE_LIMIT: ${{ github.event.inputs.core_limit }}
         EXTENDED_LIMIT: ${{ github.event.inputs.extended_limit }}
         RESET_HISTORY: ${{ github.event.inputs.reset_history }}
+        # LLM 配置
+        LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        LLM_API_URL: ${{ secrets.LLM_API_URL }}
+        LLM_MIN_SCORE: ${{ secrets.LLM_MIN_SCORE }}
+        LLM_TOP_N: ${{ secrets.LLM_TOP_N }}
       run: |
         echo "开始运行 arXiv Agent..."
         if [ "${{ github.event.inputs.reset_history }}" == "true" ]; then
