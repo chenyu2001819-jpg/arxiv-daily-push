@@ -21,6 +21,10 @@ on:
   # push:
   #   branches: [ main, master ]
 
+# 设置权限，允许写入仓库内容
+permissions:
+  contents: write
+
 jobs:
   fetch-and-push:
     runs-on: ubuntu-latest
@@ -28,6 +32,11 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        # 获取完整历史，以便提交更改
+        fetch-depth: 0
+        # 使用 GITHUB_TOKEN 进行身份验证
+        token: ${{ secrets.GITHUB_TOKEN }}
       
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -99,6 +108,7 @@ jobs:
         MAX_PAPERS: ${{ secrets.MAX_PAPERS }}
         DAYS_BACK: ${{ secrets.DAYS_BACK }}
         MIN_SCORE: ${{ secrets.MIN_SCORE }}
+        SORT_BY_CITATIONS: ${{ secrets.SORT_BY_CITATIONS }}
       run: python arxiv_agent.py
     
     - name: Save paper history
@@ -117,9 +127,18 @@ jobs:
     
     - name: Commit paper history
       if: github.event.inputs.test_email != 'true'
+      env:
+        # 使用 GITHUB_TOKEN 进行身份验证
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add paper_history.json
-        git diff --staged --quiet || (git commit -m "Update paper history [skip ci]" && git push)
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update paper history [skip ci]"
+          # 使用 GITHUB_TOKEN 推送
+          git push https://${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+        fi
       continue-on-error: true
