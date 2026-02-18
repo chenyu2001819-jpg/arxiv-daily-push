@@ -312,7 +312,7 @@ class ArxivSearcher:
             'search_query': f'all:{query}',
             'start': 0,
             'max_results': self.max_results_per_query,
-            'sortBy': 'submittedDate',
+            'sortBy': 'relevance',      # 按相关性排序（arXiv 原生支持）
             'sortOrder': 'descending'
         }
         
