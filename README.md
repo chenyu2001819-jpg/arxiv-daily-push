@@ -292,6 +292,9 @@ EXTENDED_LIMIT=10
 - `openai` - OpenAI GPT 系列
 - `deepseek` - DeepSeek Chat
 - `moonshot` - Moonshot (Kimi)
+- `gemini` - Google Gemini
+- `claude` - Anthropic Claude
+- `zhipu` - 智谱 AI
 - 或直接填写完整 API URL
 
 ---
