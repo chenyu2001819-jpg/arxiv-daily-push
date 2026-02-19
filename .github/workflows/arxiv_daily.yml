@@ -2,6 +2,7 @@ name: arXiv Daily Paper Push
 
 on:
   # 定时触发：每天 UTC 01:00（北京时间 09:00）
+  # 注意：GitHub Actions 定时任务需要仓库在过去60天内有活动
   schedule:
     - cron: '0 1 * * *'
   
